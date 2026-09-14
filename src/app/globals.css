@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   TASARIM SİSTEMİ
+   Renkler, tipografi ve aralıklar burada tek noktadan tanımlı.
+   Markanın rengini değiştirmek için sadece --brand değerlerini değiştir.
+   ========================================================================== */
+
+@theme {
+  /* --- Renkler --- */
+  --color-cream: #fbf8f6; /* sayfa zemini */
+  --color-surface: #ffffff; /* kart zemini */
+  --color-ink: #2b2321; /* ana yazı */
+  --color-ink-soft: #6b5d57; /* ikincil yazı */
+  --color-muted: #948681; /* soluk yazı */
+  --color-line: #ece2dd; /* ince çizgi */
+  --color-line-strong: #dccfc8;
+
+  --color-brand: #a4785f; /* marka rengi (sıcak taba) */
+  --color-brand-dark: #8a6049;
+  --color-brand-soft: #f3e7e0;
+
+  --color-sale: #b4453c; /* indirim / uyarı */
+  --color-success: #4b7c59;
+
+  /* --- Tipografi --- */
+  --font-display: Georgia, "Times New Roman", "Iowan Old Style", serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+
+  /* --- Yuvarlatma --- */
+  --radius-card: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   TEMEL
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+
+  /* Form alanları için tutarlı temel */
+  input, select, textarea, button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Klavye ile gezinme görünürlüğü (erişilebilirlik) */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Sayı input'larındaki okları kaldır */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   BİLEŞEN SINIFLARI
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* --- Butonlar ---
+     Tailwind v4'te @apply ile kendi bileşen sınıfını çağırmak mümkün değil,
+     bu yüzden ortak stiller :is(...) seçicisiyle paylaştırılıyor. */
+  .btn,
+  .btn-primary,
+  .btn-brand,
+  .btn-outline,
+  .btn-ghost {
+    @apply inline-flex select-none items-center justify-center gap-2 px-6 py-3
+           text-[13px] font-medium uppercase tracking-[0.08em]
+           transition-all duration-200
+           disabled:cursor-not-allowed disabled:opacity-45;
+    border-radius: var(--radius-card);
+    border: 1px solid transparent;
+  }
+
+  .btn-primary {
+    background-color: var(--color-ink);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-brand-dark);
+  }
+
+  .btn-brand {
+    background-color: var(--color-brand);
+    color: #fff;
+  }
+  .btn-brand:hover:not(:disabled) {
+    background-color: var(--color-brand-dark);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    border-color: var(--color-line-strong);
+    color: var(--color-ink);
+  }
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--color-ink);
+    background-color: #fff;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-2 text-[13px] normal-case tracking-normal;
+    background-color: transparent;
+    color: var(--color-ink-soft);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--color-ink);
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-[11px];
+  }
+
+  /* --- Form --- */
+  .field {
+    @apply w-full bg-white px-3.5 py-2.5 text-[14px] transition-colors
+           placeholder:text-[color:var(--color-muted)];
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-card);
+  }
+  .field:focus {
+    border-color: var(--color-brand);
+    outline: none;
+  }
+  .field-error {
+    border-color: var(--color-sale);
+  }
+  .label {
+    @apply mb-1.5 block text-[12px] font-medium tracking-wide;
+    color: var(--color-ink-soft);
+  }
+  .help {
+    @apply mt-1 text-[12px];
+    color: var(--color-muted);
+  }
+  .error-text {
+    @apply mt-1 text-[12px];
+    color: var(--color-sale);
+  }
+
+  /* --- Kartlar / kutular --- */
+  .card {
+    @apply bg-white;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  /* --- Başlık üstü küçük etiket --- */
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.22em];
+    color: var(--color-brand);
+  }
+
+  /* --- Rozet --- */
+  .badge {
+    @apply inline-flex items-center px-2 py-1 text-[10px] font-semibold
+           uppercase tracking-[0.12em];
+  }
+
+  /* --- Bölüm genişliği --- */
+  .container-page {
+    @apply mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-10;
+  }
+
+  /* --- Tablo (admin) --- */
+  .table-basic {
+    @apply w-full text-left text-[13px];
+  }
+  .table-basic th {
+    @apply whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase
+           tracking-[0.1em];
+    color: var(--color-muted);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .table-basic td {
+    @apply px-4 py-3 align-middle;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .table-basic tbody tr:hover {
+    background-color: #fdfbfa;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   YARDIMCILAR
+   -------------------------------------------------------------------------- */
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Ürün görsellerinin en-boy oranı */
+  .aspect-product {
+    aspect-ratio: 3 / 4;
+  }
+
+  .link-underline {
+    @apply relative;
+  }
+  .link-underline::after {
+    content: "";
+    @apply absolute bottom-0 left-0 h-px w-0 transition-all duration-300;
+    background-color: currentColor;
+  }
+  .link-underline:hover::after {
+    @apply w-full;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.35s ease-out both;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+}

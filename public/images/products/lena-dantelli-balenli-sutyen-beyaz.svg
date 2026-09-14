@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#eae2dc"/>
+      <stop offset="100%" stop-color="#cdbfb5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 335 C 205 245, 690 445, 900 305 L900 1200 L0 1200 Z"
+      fill="#cdbfb5" opacity="0.18"/><path d="M0 470 C 210 380, 685 580, 900 440 L900 1200 L0 1200 Z"
+      fill="#cdbfb5" opacity="0.27"/><path d="M0 605 C 215 515, 680 715, 900 575 L900 1200 L0 1200 Z"
+      fill="#cdbfb5" opacity="0.36"/><path d="M0 740 C 220 650, 675 850, 900 710 L900 1200 L0 1200 Z"
+      fill="#cdbfb5" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#5b4c43">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Lena Dantelli</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">BEYAZ</text>
+  </g>
+</svg>

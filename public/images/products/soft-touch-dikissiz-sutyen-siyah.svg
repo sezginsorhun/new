@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#2a2528"/>
+      <stop offset="100%" stop-color="#4a4247"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 322 C 250 232, 672 432, 900 292 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.18"/><path d="M0 466 C 264 376, 658 576, 900 436 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.27"/><path d="M0 610 C 278 520, 644 720, 900 580 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.36"/><path d="M0 714 C 292 624, 630 824, 900 684 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#e9e2e5">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Soft Touch</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">SIYAH</text>
+  </g>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#9fbdd0"/>
+      <stop offset="100%" stop-color="#7ba0ba"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 323 C 265 233, 618 433, 900 293 L900 1200 L0 1200 Z"
+      fill="#7ba0ba" opacity="0.18"/><path d="M0 454 C 186 364, 577 564, 900 424 L900 1200 L0 1200 Z"
+      fill="#7ba0ba" opacity="0.27"/><path d="M0 585 C 227 495, 676 695, 900 555 L900 1200 L0 1200 Z"
+      fill="#7ba0ba" opacity="0.36"/><path d="M0 716 C 268 626, 635 826, 900 686 L900 1200 L0 1200 Z"
+      fill="#7ba0ba" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#2e4756">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Nova Üçgen</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">MAVI</text>
+  </g>
+</svg>

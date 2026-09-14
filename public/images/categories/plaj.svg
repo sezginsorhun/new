@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0.4" y2="1">
+    <stop offset="0%" stop-color="#9fbdd0"/><stop offset="100%" stop-color="#7ba0ba"/>
+  </linearGradient></defs>
+  <rect width="640" height="800" fill="url(#g)"/>
+  <circle cx="470" cy="250" r="210" fill="#ffffff" opacity="0.10"/>
+  <path d="M0 560 C 200 480, 420 640, 640 540 L640 800 L0 800 Z" fill="#7ba0ba" opacity="0.5"/>
+  <text x="48" y="726" font-size="34" fill="#2e4756" font-family="Georgia, serif">Plaj</text>
+</svg>

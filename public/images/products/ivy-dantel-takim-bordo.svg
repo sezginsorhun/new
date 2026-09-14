@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#5c2430"/>
+      <stop offset="100%" stop-color="#7a3543"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 325 C 255 235, 670 435, 900 295 L900 1200 L0 1200 Z"
+      fill="#7a3543" opacity="0.18"/><path d="M0 470 C 270 380, 655 580, 900 440 L900 1200 L0 1200 Z"
+      fill="#7a3543" opacity="0.27"/><path d="M0 615 C 285 525, 640 725, 900 585 L900 1200 L0 1200 Z"
+      fill="#7a3543" opacity="0.36"/><path d="M0 720 C 180 630, 625 830, 900 690 L900 1200 L0 1200 Z"
+      fill="#7a3543" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#f0dde1">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Ivy Dantel</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">BORDO</text>
+  </g>
+</svg>
