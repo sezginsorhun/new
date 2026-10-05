@@ -266,6 +266,31 @@ async function main() {
   });
   db = drizzle(client, { schema, mode: "default" });
 
+  /* ----------------------- GÜVENLİK KİLİDİ -----------------------
+   * Bu dosya örnek veri yükler ve bunu yapmadan önce TÜM TABLOLARI
+   * BOŞALTIR. Canlıda yanlışlıkla çalışırsa gerçek siparişler ve
+   * ürünler yok olur.
+   *
+   * Bu yüzden: veritabanında zaten veri varsa hiçbir şey yapmadan
+   * çıkar. Gerçekten sıfırlamak istiyorsan SEED_FORCE=1 ver:
+   *     SEED_FORCE=1 npm run db:seed
+   */
+  const [existingRows] = await client.query(
+    "select (select count(*) from `users`) as u, (select count(*) from `products`) as p",
+  );
+  const existing = (existingRows as Array<{ u: number; p: number }>)[0];
+  const hasData = (existing?.u ?? 0) > 0 || (existing?.p ?? 0) > 0;
+
+  if (hasData && process.env.SEED_FORCE !== "1") {
+    console.log(
+      `ℹ Veritabanında zaten veri var (${existing.u} kullanıcı, ${existing.p} ürün).\n` +
+        "  Örnek veriler YÜKLENMEDİ — mevcut veriler korundu.\n" +
+        "  Gerçekten sıfırlamak istiyorsan: SEED_FORCE=1 npm run db:seed",
+    );
+    await client.end();
+    return;
+  }
+
   console.log("→ Mevcut veriler temizleniyor...");
   await db.delete(stockMovements);
   await db.delete(orderItems);

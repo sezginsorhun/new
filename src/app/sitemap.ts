@@ -14,6 +14,12 @@ import { categories, products, pages } from "@/db/schema";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
+/**
+ * Derleme sırasında veritabanına BAĞLANMAYA ÇALIŞMASIN diye istek
+ * anında üretilir. Yoksa veritabanı bir an erişilemezse tüm dağıtım
+ * çöker. Sonuç bir saat önbelleklenir, maliyeti yok denecek kadar az.
+ */
+export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

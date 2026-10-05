@@ -139,3 +139,26 @@ if (process.env.AUTO_MIGRATE === "1") {
   console.log("ℹ AUTO_MIGRATE kapalı. Veritabanı şemasını elle güncellemen gerekir:");
   console.log("   npm run db:migrate");
 }
+
+/* 4) İlk kurulumda örnek verileri yükle ----------------------------------
+ *
+ * AUTO_SEED=1 ise seed çalıştırılır. Seed kendi içinde korumalıdır:
+ * veritabanında zaten kullanıcı veya ürün varsa HİÇBİR ŞEY yapmaz.
+ * Yani bu değişkeni açık bırakman güvenlidir — yalnızca bomboş bir
+ * veritabanını doldurur, sonraki dağıtımlarda sessizce atlar.
+ *
+ * Bu sayede ilk dağıtımdan sonra site boş açılmaz; kategoriler,
+ * ürünler, ana sayfa bölümleri ve yönetici hesabı hazır gelir.
+ */
+if (process.env.AUTO_SEED === "1") {
+  console.log("→ AUTO_SEED=1 — örnek veriler kontrol ediliyor...");
+  const seed = spawnSync("npx", ["tsx", "src/db/seed.ts"], {
+    stdio: "inherit",
+    env: process.env,
+    shell: process.platform === "win32",
+  });
+  if (seed.status !== 0) {
+    console.error("✗ Örnek veri yüklenemedi. Derleme durduruldu.");
+    process.exit(1);
+  }
+}
