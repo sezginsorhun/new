@@ -9,9 +9,11 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "prebuild": "node scripts/prebuild.mjs",
+    "db:migrate:dev": "drizzle-kit migrate"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -19,9 +21,9 @@
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.12",
     "lucide-react": "^1.45.0",
+    "mysql2": "^3.24.5",
     "next": "16.3.5",
     "nodemailer": "^10.0.9",
-    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.2"
@@ -39,5 +41,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

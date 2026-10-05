@@ -220,8 +220,7 @@ export async function submitReviewAction(
         title: (formData.get("title") as string) || null,
         comment,
       })
-      .onConflictDoUpdate({
-        target: [reviews.productId, reviews.userId],
+      .onDuplicateKeyUpdate({
         set: { rating, comment, isApproved: false },
       });
   } catch {

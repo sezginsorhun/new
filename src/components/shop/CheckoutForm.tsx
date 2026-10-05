@@ -77,12 +77,22 @@ export default function CheckoutForm({
   // Kart numarasının ilk 6 hanesi girilince taksit sorgula
   useEffect(() => {
     const bin = cardNumber.replace(/\D/g, "").slice(0, 6);
-    if (method !== "CREDIT_CARD" || bin.length < 6 || !cardConfigured) {
-      setInstallments([]);
-      setCardInfo(null);
-      return;
-    }
     let cancelled = false;
+
+    // Kart numarası eksikse ya da kredi kartı seçili değilse taksit
+    // listesi temizlenir. setState doğrudan effect gövdesinde değil,
+    // zamanlayıcı içinde çağrılır (gereksiz zincirleme render olmasın).
+    if (method !== "CREDIT_CARD" || bin.length < 6 || !cardConfigured) {
+      const reset = setTimeout(() => {
+        if (cancelled) return;
+        setInstallments([]);
+        setCardInfo(null);
+      }, 0);
+      return () => {
+        cancelled = true;
+        clearTimeout(reset);
+      };
+    }
     const timer = setTimeout(async () => {
       try {
         const response = await fetch("/api/odeme/taksit", {
@@ -495,7 +505,7 @@ export default function CheckoutForm({
               <p className="flex items-start gap-2 text-[12px] text-[color:var(--color-muted)]">
                 <Lock size={13} strokeWidth={1.5} className="mt-0.5 shrink-0" />
                 Kart bilgileriniz sitemizde saklanmaz; doğrudan lisanslı ödeme kuruluşu
-                iyzico'ya iletilir ve 3D Secure ile doğrulanır.
+                iyzico&apos;ya iletilir ve 3D Secure ile doğrulanır.
               </p>
             </div>
           )}

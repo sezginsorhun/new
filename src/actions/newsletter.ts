@@ -21,8 +21,7 @@ export async function subscribeNewsletter(
     await db
       .insert(newsletterSubscribers)
       .values({ email: parsed.data })
-      .onConflictDoUpdate({
-        target: newsletterSubscribers.email,
+      .onDuplicateKeyUpdate({
         set: { isActive: true },
       });
     return { ok: true, message: "Kaydın alındı, teşekkürler!" };

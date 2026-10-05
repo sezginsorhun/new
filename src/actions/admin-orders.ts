@@ -5,6 +5,8 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, payments } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { assertSameOrigin } from "@/lib/security";
 import { markOrderPaid, restoreStockForOrder } from "@/lib/orders";
 import { cancelPayment, refundPayment } from "@/lib/iyzico";
 import { sendShippingNotice } from "@/lib/mail";
@@ -27,7 +29,10 @@ type OrderStatus = (typeof ALLOWED_STATUSES)[number];
 
 /** Sipariş durumunu değiştirir; iptal/iade durumunda stoğu geri ekler. */
 export async function updateOrderStatusAction(orderId: string, status: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  await logAudit({ action: "order.status", userId: admin.id, actorEmail: admin.email,
+    entity: "order", entityId: orderId, summary: `Durum: ${status}` });
   if (!ALLOWED_STATUSES.includes(status as OrderStatus)) {
     return { ok: false, message: "Geçersiz durum." };
   }
@@ -86,7 +91,8 @@ export async function setShippingAction(
   _prev: OrderActionState,
   formData: FormData,
 ): Promise<OrderActionState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const orderId = String(formData.get("orderId") ?? "");
   const company = String(formData.get("shippingCompany") ?? "").trim();
@@ -123,7 +129,8 @@ export async function setAdminNoteAction(
   _prev: OrderActionState,
   formData: FormData,
 ): Promise<OrderActionState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   const orderId = String(formData.get("orderId") ?? "");
   const note = String(formData.get("adminNote") ?? "").slice(0, 2000);
 
@@ -138,7 +145,10 @@ export async function setAdminNoteAction(
  * Önce iptal denenir, olmazsa iade denenir.
  */
 export async function refundOrderAction(orderId: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  await logAudit({ action: "order.refund", userId: admin.id, actorEmail: admin.email,
+    entity: "order", entityId: orderId });
 
   const rows = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   const order = rows[0];

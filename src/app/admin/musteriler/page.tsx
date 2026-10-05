@@ -1,4 +1,5 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { adminUrl } from "@/lib/admin-path";
+import { and, desc, eq, like, inArray, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
@@ -18,10 +19,10 @@ export default async function AdminCustomersPage(props: PageProps<"/admin/muster
   if (term) {
     filters.push(
       or(
-        ilike(users.email, `%${term}%`),
-        ilike(users.firstName, `%${term}%`),
-        ilike(users.lastName, `%${term}%`),
-        ilike(users.phone, `%${term}%`),
+        like(users.email, `%${term}%`),
+        like(users.firstName, `%${term}%`),
+        like(users.lastName, `%${term}%`),
+        like(users.phone, `%${term}%`),
       )!,
     );
   }
@@ -35,7 +36,7 @@ export default async function AdminCustomersPage(props: PageProps<"/admin/muster
       .orderBy(desc(users.createdAt))
       .limit(PER_PAGE)
       .offset((page - 1) * PER_PAGE),
-    db.select({ count: sql<number>`count(*)::int` }).from(users).where(where),
+    db.select({ count: sql<number>`count(*)` }).from(users).where(where),
   ]);
 
   const ids = rows.map((row) => row.id);
@@ -43,8 +44,8 @@ export default async function AdminCustomersPage(props: PageProps<"/admin/muster
     ? await db
         .select({
           userId: orders.userId,
-          count: sql<number>`count(*)::int`,
-          total: sql<number>`coalesce(sum(${orders.grandTotal}),0)::int`,
+          count: sql<number>`count(*)`,
+          total: sql<number>`coalesce(sum(${orders.grandTotal}),0)`,
         })
         .from(orders)
         .where(
@@ -83,7 +84,7 @@ export default async function AdminCustomersPage(props: PageProps<"/admin/muster
           </div>
         </div>
         <button type="submit" className="btn-outline btn-sm">Ara</button>
-        {term && <Link href="/admin/musteriler" className="btn-ghost">Temizle</Link>}
+        {term && <Link href={adminUrl("musteriler")} className="btn-ghost">Temizle</Link>}
       </form>
 
       <div className="card overflow-hidden">
@@ -159,7 +160,7 @@ export default async function AdminCustomersPage(props: PageProps<"/admin/muster
             return (
               <Link
                 key={n}
-                href={`/admin/musteriler?${params.toString()}`}
+                href={adminUrl(`musteriler?${params.toString()}`)}
                 className={`h-8 min-w-8 px-2 text-center text-[13px] leading-8 ${
                   n === page
                     ? "bg-[color:var(--color-ink)] text-white"

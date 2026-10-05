@@ -1,5 +1,6 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import { db } from "@/db";
 import { orderItems, orders } from "@/db/schema";
@@ -35,9 +36,9 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
   if (term) {
     filters.push(
       or(
-        ilike(orders.orderNumber, `%${term}%`),
-        ilike(orders.email, `%${term}%`),
-        ilike(orders.phone, `%${term}%`),
+        like(orders.orderNumber, `%${term}%`),
+        like(orders.email, `%${term}%`),
+        like(orders.phone, `%${term}%`),
       )!,
     );
   }
@@ -53,15 +54,15 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
       .orderBy(desc(orders.createdAt))
       .limit(PER_PAGE)
       .offset((page - 1) * PER_PAGE),
-    db.select({ count: sql<number>`count(*)::int` }).from(orders).where(where),
+    db.select({ count: sql<number>`count(*)` }).from(orders).where(where),
     db
-      .select({ status: orders.status, count: sql<number>`count(*)::int` })
+      .select({ status: orders.status, count: sql<number>`count(*)` })
       .from(orders)
       .groupBy(orders.status),
     db
       .select({
         orderId: orderItems.orderId,
-        count: sql<number>`coalesce(sum(${orderItems.quantity}),0)::int`,
+        count: sql<number>`coalesce(sum(${orderItems.quantity}),0)`,
       })
       .from(orderItems)
       .groupBy(orderItems.orderId),
@@ -84,9 +85,12 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
             tab.value === ""
               ? statusCounts.reduce((sum, row) => sum + row.count, 0)
               : (statusCounts.find((row) => row.status === tab.value)?.count ?? 0);
-          const href = tab.value
-            ? `/admin/siparisler?durum=${tab.value}${term ? `&q=${encodeURIComponent(term)}` : ""}`
-            : `/admin/siparisler${term ? `?q=${encodeURIComponent(term)}` : ""}`;
+          const query = new URLSearchParams();
+          if (tab.value) query.set("durum", tab.value);
+          if (term) query.set("q", term);
+          const href = adminUrl(
+            `siparisler${query.toString() ? `?${query.toString()}` : ""}`,
+          );
           return (
             <Link
               key={tab.value}
@@ -124,7 +128,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
           </div>
         </div>
         <button type="submit" className="btn-outline btn-sm">Ara</button>
-        {(term || status) && <Link href="/admin/siparisler" className="btn-ghost">Temizle</Link>}
+        {(term || status) && <Link href={adminUrl("siparisler")} className="btn-ghost">Temizle</Link>}
       </form>
 
       <div className="card overflow-hidden">
@@ -153,7 +157,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
                 <tr key={order.id}>
                   <td>
                     <Link
-                      href={`/admin/siparisler/${order.id}`}
+                      href={adminUrl(`siparisler/${order.id}`)}
                       className="font-medium hover:text-[color:var(--color-brand)]"
                     >
                       {order.orderNumber}
@@ -204,7 +208,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/siparisle
             return (
               <Link
                 key={n}
-                href={`/admin/siparisler?${params.toString()}`}
+                href={adminUrl(`siparisler?${params.toString()}`)}
                 className={`h-8 min-w-8 px-2 text-center text-[13px] leading-8 ${
                   n === page
                     ? "bg-[color:var(--color-ink)] text-white"

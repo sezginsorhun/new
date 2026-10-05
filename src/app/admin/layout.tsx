@@ -1,23 +1,27 @@
+import { adminUrl, ADMIN_PATH } from "@/lib/admin-path";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { LogOut } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { adminSessionState } from "@/lib/auth";
 import { logoutAction } from "@/actions/auth";
 import AdminNav from "@/components/admin/AdminNav";
 
 const MOBILE_LINKS = [
-  { href: "/admin", label: "Panel" },
-  { href: "/admin/siparisler", label: "Siparişler" },
-  { href: "/admin/urunler", label: "Ürünler" },
-  { href: "/admin/stok", label: "Stok" },
-  { href: "/admin/kategoriler", label: "Kategoriler" },
-  { href: "/admin/kuponlar", label: "Kuponlar" },
-  { href: "/admin/musteriler", label: "Müşteriler" },
-  { href: "/admin/yorumlar", label: "Yorumlar" },
-  { href: "/admin/bannerlar", label: "Bannerlar" },
-  { href: "/admin/mesajlar", label: "Mesajlar" },
-  { href: "/admin/sayfalar", label: "Sayfalar" },
-  { href: "/admin/ayarlar", label: "Ayarlar" },
+  { href: adminUrl(), label: "Panel" },
+  { href: adminUrl("siparisler"), label: "Siparişler" },
+  { href: adminUrl("urunler"), label: "Ürünler" },
+  { href: adminUrl("stok"), label: "Stok" },
+  { href: adminUrl("kategoriler"), label: "Kategoriler" },
+  { href: adminUrl("kuponlar"), label: "Kuponlar" },
+  { href: adminUrl("musteriler"), label: "Müşteriler" },
+  { href: adminUrl("yorumlar"), label: "Yorumlar" },
+  { href: adminUrl("anasayfa"), label: "Ana Sayfa" },
+  { href: adminUrl("bannerlar"), label: "Carousel" },
+  { href: adminUrl("medya"), label: "Medya" },
+  { href: adminUrl("mesajlar"), label: "Mesajlar" },
+  { href: adminUrl("sayfalar"), label: "Sayfalar" },
+  { href: adminUrl("ayarlar"), label: "Ayarlar" },
+  { href: adminUrl("guvenlik"), label: "Güvenlik" },
 ];
 
 export const metadata = {
@@ -26,16 +30,22 @@ export const metadata = {
 };
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/giris?next=/admin");
-  if (user.role !== "ADMIN") redirect("/");
+  // İkinci savunma hattı: proxy'yi atlatan bir istek buraya gelse bile
+  // panel açılmaz. Üç durum ayrı ayrı ele alınır.
+  const state = await adminSessionState();
+
+  if (state.state === "anonymous") redirect(`/giris?next=/${ADMIN_PATH}`);
+  if (state.state === "not-admin") notFound(); // panelin varlığını sızdırma
+  if (state.state === "needs-2fa") redirect("/dogrulama");
+
+  const user = state.user;
 
   return (
     <div className="flex min-h-screen bg-[color:var(--color-cream)]">
       {/* Kenar çubuğu */}
       <aside className="sticky top-0 hidden h-screen w-[228px] shrink-0 flex-col border-r border-[color:var(--color-line)] bg-white lg:flex">
         <div className="border-b border-[color:var(--color-line)] px-5 py-4">
-          <Link href="/admin" className="block">
+          <Link href={adminUrl()} className="block">
             <p className="font-[family-name:var(--font-display)] text-[20px] leading-none">
               Alenora
             </p>
@@ -68,7 +78,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         {/* Mobil üst bar */}
         <div className="sticky top-0 z-30 border-b border-[color:var(--color-line)] bg-white px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
-            <Link href="/admin" className="font-[family-name:var(--font-display)] text-[18px]">
+            <Link href={adminUrl()} className="font-[family-name:var(--font-display)] text-[18px]">
               Alenora Yönetim
             </Link>
             <form action={logoutAction}>

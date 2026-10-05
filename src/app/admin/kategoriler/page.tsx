@@ -9,7 +9,7 @@ export default async function AdminCategoriesPage() {
     db
       .select({
         categoryId: productCategories.categoryId,
-        count: sql<number>`count(*)::int`,
+        count: sql<number>`count(*)`,
       })
       .from(productCategories)
       .groupBy(productCategories.categoryId),

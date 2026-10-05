@@ -7,6 +7,13 @@ import { Link2, Upload } from "lucide-react";
  * Görsel seçimi: dosya yükle VEYA hazır bir adres yapıştır.
  * Yükleme /api/admin/upload adresine gider (public/uploads klasörüne yazar).
  */
+/** httpOnly olmayan csrf çerezini okur. */
+export function readCsrfCookie(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 export default function ImageUploader({
   onPicked,
   label = "Görsel",
@@ -25,7 +32,14 @@ export default function ImageUploader({
     try {
       const body = new FormData();
       body.append("file", file);
-      const response = await fetch("/api/admin/upload", { method: "POST", body });
+      // CSRF jetonu: sunucunun yazdığı çerezden okunur ve formla birlikte
+      // gönderilir. Başka bir site bu çerezi okuyamaz.
+      body.append("csrf", readCsrfCookie());
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
+        body,
+        credentials: "same-origin",
+      });
       const data = await response.json();
       if (data.ok) onPicked(data.url);
       else setError(data.error ?? "Yüklenemedi.");

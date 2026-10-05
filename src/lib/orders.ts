@@ -8,6 +8,7 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { createId } from "@/lib/id";
 import {
   carts,
   cartItems,
@@ -28,8 +29,17 @@ import { buildOrderNumber } from "@/lib/utils";
 /* --------------------------- SİPARİŞ NUMARASI --------------------------- */
 
 export async function nextOrderNumber(): Promise<string> {
-  const result = await db.execute(sql`select nextval('order_number_seq') as value`);
-  const rows = result as unknown as Array<{ value: string | number }>;
+  // MySQL'de sequence yok. `LAST_INSERT_ID(value + 1)` kalıbı sayacı tek
+  // sorguda hem artırır hem de artırılmış değeri bu bağlantıya döndürür.
+  // Aynı anda gelen iki sipariş asla aynı numarayı alamaz.
+  await db.execute(sql`insert ignore into counters (name, value) values ('order_number', 0)`);
+  await db.execute(
+    sql`update counters set value = last_insert_id(value + 1) where name = 'order_number'`,
+  );
+  const result = await db.execute(sql`select last_insert_id() as value`);
+  const rows = (Array.isArray(result) ? result[0] : result) as unknown as Array<{
+    value: string | number;
+  }>;
   return buildOrderNumber(Number(rows[0].value));
 }
 
@@ -96,9 +106,21 @@ export async function createPendingOrder(
 
   const orderNumber = await nextOrderNumber();
 
-  const [order] = await db
+  // MySQL'de RETURNING yok: kimliği önce üretiyoruz ve dönen özeti
+  // elimizdeki değerlerden kuruyoruz (ekstra sorguya gerek kalmıyor).
+  const orderId = createId();
+  const order = {
+    id: orderId,
+    orderNumber,
+    subtotal: totals.subtotal,
+    discountTotal: totals.discountTotal,
+    shippingTotal,
+    grandTotal,
+  };
+  await db
     .insert(orders)
     .values({
+      id: orderId,
       orderNumber,
       userId: input.userId,
       email: input.email,
@@ -115,8 +137,7 @@ export async function createPendingOrder(
       shippingAddress: input.shippingAddress,
       billingAddress: input.billingAddress,
       customerNote: input.customerNote,
-    })
-    .returning();
+    });
 
   // Sipariş satırları — ürün bilgisinin anlık kopyası
   const itemRows = totals.lines.map((line) => ({
@@ -308,17 +329,21 @@ export async function createPaymentRecord(values: {
   installment: number;
   provider?: string;
 }) {
+  const paymentId = createId();
+  await db.insert(payments).values({
+    id: paymentId,
+    orderId: values.orderId,
+    amount: values.amount,
+    conversationId: values.conversationId,
+    installment: values.installment,
+    provider: values.provider ?? "iyzico",
+    status: "PENDING",
+  });
   const [record] = await db
-    .insert(payments)
-    .values({
-      orderId: values.orderId,
-      amount: values.amount,
-      conversationId: values.conversationId,
-      installment: values.installment,
-      provider: values.provider ?? "iyzico",
-      status: "PENDING",
-    })
-    .returning();
+    .select()
+    .from(payments)
+    .where(eq(payments.id, paymentId))
+    .limit(1);
   return record;
 }
 

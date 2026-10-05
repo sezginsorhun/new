@@ -1,5 +1,6 @@
 "use client";
 
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -32,7 +33,7 @@ export default function StockRow({
     <tr className={pending ? "opacity-60" : ""}>
       <td>
         <Link
-          href={`/admin/urunler/${row.productId}`}
+          href={adminUrl(`urunler/${row.productId}`)}
           className="hover:text-[color:var(--color-brand)]"
         >
           {row.productName}

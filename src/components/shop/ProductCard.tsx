@@ -21,7 +21,7 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
   return (
     <article className="group relative">
       <Link href={`/urun/${product.slug}`} className="block">
-        <div className="relative overflow-hidden bg-[#f3ece8] aspect-product">
+        <div className="relative overflow-hidden bg-[color:var(--color-surface-3)] aspect-product">
           {primary ? (
             <>
               <Image
@@ -49,32 +49,52 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
           )}
 
           {/* Rozetler */}
-          <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-            {discount && (
-              <span className="badge bg-[color:var(--color-sale)] text-white">%{discount} indirim</span>
-            )}
-            {product.isNew && !discount && (
-              <span className="badge bg-white text-[color:var(--color-ink)]">Yeni</span>
-            )}
+          <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
+            {discount && <span className="badge badge-sale">%{discount}</span>}
+            {product.isNew && !discount && <span className="badge badge-new">Yeni</span>}
           </div>
 
           {!product.inStock && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-              <span className="badge bg-[color:var(--color-ink)] text-white">Tükendi</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/75">
+              <span className="badge badge-new">Tükendi</span>
             </div>
+          )}
+
+          {/* Hızlı bakış — masaüstünde kartın üstüne gelince çıkar */}
+          {product.inStock && (
+            <span className="pointer-events-none absolute inset-x-2.5 bottom-2.5 hidden translate-y-1 items-center justify-center bg-[color:var(--color-ink)] py-2.5 text-[12px] font-semibold text-white opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 lg:flex">
+              İncele
+            </span>
           )}
         </div>
       </Link>
 
-      <div className="pt-3.5">
+      <div className="pt-3">
+        {product.reviewCount > 0 && product.rating !== null && (
+          <p className="mb-1 flex items-center gap-1 text-[11.5px] text-[color:var(--color-muted)]">
+            <span aria-hidden className="text-[color:var(--color-ink)]">
+              {"★".repeat(Math.round(product.rating))}
+              <span className="text-[color:var(--color-line-strong)]">
+                {"★".repeat(5 - Math.round(product.rating))}
+              </span>
+            </span>
+            <span className="sr-only">{product.rating} yıldız,</span>
+            {product.reviewCount}
+          </p>
+        )}
+
         <Link href={`/urun/${product.slug}`}>
-          <h3 className="font-[family-name:var(--font-sans)] text-[13.5px] leading-snug text-[color:var(--color-ink)] transition-colors group-hover:text-[color:var(--color-brand)]">
+          <h3 className="text-[13.5px] font-medium leading-snug tracking-[-0.01em] text-[color:var(--color-ink)]">
             {product.name}
           </h3>
         </Link>
 
         <div className="mt-1.5 flex items-baseline gap-2">
-          <span className="text-[14px] font-semibold tracking-tight">
+          <span
+            className={`text-[14.5px] font-bold tracking-tight ${
+              discount ? "text-[color:var(--color-sale)]" : ""
+            }`}
+          >
             {formatPrice(product.price)}
           </span>
           {product.compareAtPrice && product.compareAtPrice > product.price && (

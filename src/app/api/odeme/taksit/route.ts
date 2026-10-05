@@ -12,10 +12,11 @@ import { createId } from "@/lib/id";
 
 export async function POST(request: Request) {
   let binNumber = "";
+  let couponCode: string | null = null;
   try {
     const body = (await request.json()) as { binNumber?: string; couponCode?: string | null };
     binNumber = String(body.binNumber ?? "").replace(/\D/g, "").slice(0, 8);
-    var couponCode = body.couponCode ?? null;
+    couponCode = body.couponCode ?? null;
   } catch {
     return Response.json({ ok: false, error: "Geçersiz istek." }, { status: 400 });
   }

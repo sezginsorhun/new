@@ -1,3 +1,4 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { Star } from "lucide-react";
@@ -49,7 +50,7 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/yorumlar
         ].map((tab) => (
           <Link
             key={tab.value}
-            href={`/admin/yorumlar?filtre=${tab.value}`}
+            href={adminUrl(`yorumlar?filtre=${tab.value}`)}
             className={`border px-3 py-1.5 text-[12px] ${
               filter === tab.value
                 ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-white"

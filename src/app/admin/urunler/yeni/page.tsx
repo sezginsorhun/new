@@ -1,3 +1,4 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
@@ -14,7 +15,7 @@ export default async function NewProductPage() {
   return (
     <div className="max-w-[880px]">
       <Link
-        href="/admin/urunler"
+        href={adminUrl("urunler")}
         className="mb-4 inline-flex items-center gap-1.5 text-[12.5px] text-[color:var(--color-brand)]"
       >
         <ArrowLeft size={14} strokeWidth={1.5} />

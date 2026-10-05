@@ -1,6 +1,7 @@
+import { adminUrl } from "@/lib/admin-path";
 import Image from "next/image";
 import Link from "next/link";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { Plus, Search } from "lucide-react";
 import { db } from "@/db";
 import { categories, productCategories, productImages, productVariants, products } from "@/db/schema";
@@ -19,7 +20,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/urunler
   const filters = [];
   if (term) {
     filters.push(
-      or(ilike(products.name, `%${term}%`), ilike(products.sku, `%${term}%`))!,
+      or(like(products.name, `%${term}%`), like(products.sku, `%${term}%`))!,
     );
   }
   if (durum === "aktif") filters.push(eq(products.isActive, true));
@@ -45,14 +46,14 @@ export default async function AdminProductsPage(props: PageProps<"/admin/urunler
       .orderBy(desc(products.updatedAt))
       .limit(PER_PAGE)
       .offset((page - 1) * PER_PAGE),
-    db.select({ count: sql<number>`count(*)::int` }).from(products).where(where),
+    db.select({ count: sql<number>`count(*)` }).from(products).where(where),
     db.select().from(categories).orderBy(asc(categories.sortOrder)),
     db.select().from(productImages).orderBy(asc(productImages.sortOrder)),
     db
       .select({
         productId: productVariants.productId,
-        variantCount: sql<number>`count(*)::int`.as("variantCount"),
-        totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)::int`.as("totalStock"),
+        variantCount: sql<number>`count(*)`.as("variantCount"),
+        totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)`.as("totalStock"),
       })
       .from(productVariants)
       .groupBy(productVariants.productId),
@@ -83,7 +84,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/urunler
           <h1 className="text-[26px]">Ürünler</h1>
           <p className="text-[12.5px] text-[color:var(--color-muted)]">{total} ürün</p>
         </div>
-        <Link href="/admin/urunler/yeni" className="btn-primary btn-sm">
+        <Link href={adminUrl("urunler/yeni")} className="btn-primary btn-sm">
           <Plus size={14} strokeWidth={1.5} />
           Yeni Ürün
         </Link>
@@ -130,7 +131,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/urunler
         </div>
         <button type="submit" className="btn-outline btn-sm">Filtrele</button>
         {(term || categorySlug || durum) && (
-          <Link href="/admin/urunler" className="btn-ghost">Temizle</Link>
+          <Link href={adminUrl("urunler")} className="btn-ghost">Temizle</Link>
         )}
       </form>
 
@@ -171,7 +172,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/urunler
                         </div>
                         <div className="min-w-0">
                           <Link
-                            href={`/admin/urunler/${product.id}`}
+                            href={adminUrl(`urunler/${product.id}`)}
                             className="block max-w-[260px] truncate font-medium hover:text-[color:var(--color-brand)]"
                           >
                             {product.name}

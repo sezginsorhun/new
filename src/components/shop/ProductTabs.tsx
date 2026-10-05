@@ -228,7 +228,7 @@ export default function ProductTabs({
         {active === "teslimat" && (
           <div className="space-y-4 text-[color:var(--color-ink-soft)]">
             <p>
-              Saat 15:00'e kadar verilen siparişler aynı gün kargoya teslim edilir. Türkiye
+              Saat 15:00&apos;e kadar verilen siparişler aynı gün kargoya teslim edilir. Türkiye
               içinde ortalama teslim süresi 1-3 iş günüdür.
             </p>
             <p>

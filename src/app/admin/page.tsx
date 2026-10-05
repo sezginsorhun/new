@@ -1,3 +1,4 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
@@ -43,27 +44,27 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
     db
       .select({
-        count: sql<number>`count(*)::int`,
-        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)::int`,
+        count: sql<number>`count(*)`,
+        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)`,
       })
       .from(orders)
       .where(and(gte(orders.createdAt, startOfToday), inArray(orders.status, [...PAID_STATUSES]))),
     db
       .select({
-        count: sql<number>`count(*)::int`,
-        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)::int`,
+        count: sql<number>`count(*)`,
+        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)`,
       })
       .from(orders)
       .where(and(gte(orders.createdAt, startOfMonth), inArray(orders.status, [...PAID_STATUSES]))),
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: sql<number>`count(*)` })
       .from(orders)
       .where(inArray(orders.status, ["PENDING", "PAID"])),
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: sql<number>`count(*)` })
       .from(users)
       .where(eq(users.role, "CUSTOMER")),
-    db.select({ count: sql<number>`count(*)::int` }).from(products),
+    db.select({ count: sql<number>`count(*)` }).from(products),
     db
       .select({
         id: productVariants.id,
@@ -87,22 +88,22 @@ export default async function AdminDashboard() {
       .limit(8),
     db.select().from(orders).orderBy(desc(orders.createdAt)).limit(8),
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: sql<number>`count(*)` })
       .from(reviews)
       .where(eq(reviews.isApproved, false)),
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: sql<number>`count(*)` })
       .from(contactMessages)
       .where(eq(contactMessages.isRead, false)),
     db
       .select({
-        day: sql<string>`to_char(${orders.createdAt}, 'YYYY-MM-DD')`.as("day"),
-        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)::int`.as("total"),
+        day: sql<string>`date_format(${orders.createdAt}, '%Y-%m-%d')`.as("day"),
+        total: sql<number>`coalesce(sum(${orders.grandTotal}),0)`.as("total"),
       })
       .from(orders)
       .where(and(gte(orders.createdAt, last30), inArray(orders.status, [...PAID_STATUSES])))
-      .groupBy(sql`to_char(${orders.createdAt}, 'YYYY-MM-DD')`)
-      .orderBy(sql`to_char(${orders.createdAt}, 'YYYY-MM-DD')`),
+      .groupBy(sql`date_format(${orders.createdAt}, '%Y-%m-%d')`)
+      .orderBy(sql`date_format(${orders.createdAt}, '%Y-%m-%d')`),
     db
       .select({
         id: products.id,
@@ -155,7 +156,7 @@ export default async function AdminDashboard() {
         <div className="mb-6 flex flex-wrap gap-2">
           {(pendingReviews[0]?.count ?? 0) > 0 && (
             <Link
-              href="/admin/yorumlar"
+              href={adminUrl("yorumlar")}
               className="flex items-center gap-2 border border-[color:var(--color-brand)] bg-[color:var(--color-brand-soft)] px-3.5 py-2 text-[12.5px]"
             >
               {pendingReviews[0].count} yorum onay bekliyor
@@ -164,7 +165,7 @@ export default async function AdminDashboard() {
           )}
           {(unreadMessages[0]?.count ?? 0) > 0 && (
             <Link
-              href="/admin/mesajlar"
+              href={adminUrl("mesajlar")}
               className="flex items-center gap-2 border border-[color:var(--color-brand)] bg-[color:var(--color-brand-soft)] px-3.5 py-2 text-[12.5px]"
             >
               {unreadMessages[0].count} okunmamış mesaj
@@ -219,7 +220,7 @@ export default async function AdminDashboard() {
         <section className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-[color:var(--color-line)] px-5 py-3.5">
             <h2 className="text-[15px] font-semibold">Son Siparişler</h2>
-            <Link href="/admin/siparisler" className="text-[12px] text-[color:var(--color-brand)]">
+            <Link href={adminUrl("siparisler")} className="text-[12px] text-[color:var(--color-brand)]">
               Tümü →
             </Link>
           </div>
@@ -243,7 +244,7 @@ export default async function AdminDashboard() {
                     <tr key={order.id}>
                       <td>
                         <Link
-                          href={`/admin/siparisler/${order.id}`}
+                          href={adminUrl(`siparisler/${order.id}`)}
                           className="font-medium hover:text-[color:var(--color-brand)]"
                         >
                           {order.orderNumber}
@@ -278,7 +279,7 @@ export default async function AdminDashboard() {
               <AlertTriangle size={15} strokeWidth={1.5} className="text-[color:var(--color-sale)]" />
               Kritik Stok
             </h2>
-            <Link href="/admin/stok" className="text-[12px] text-[color:var(--color-brand)]">
+            <Link href={adminUrl("stok")} className="text-[12px] text-[color:var(--color-brand)]">
               Tümü →
             </Link>
           </div>
@@ -301,7 +302,7 @@ export default async function AdminDashboard() {
                     <tr key={variant.id}>
                       <td>
                         <Link
-                          href={`/admin/urunler/${variant.productId}`}
+                          href={adminUrl(`urunler/${variant.productId}`)}
                           className="hover:text-[color:var(--color-brand)]"
                         >
                           {variant.productName}
@@ -350,7 +351,7 @@ export default async function AdminDashboard() {
                   <tr key={product.id}>
                     <td>
                       <Link
-                        href={`/admin/urunler/${product.id}`}
+                        href={adminUrl(`urunler/${product.id}`)}
                         className="hover:text-[color:var(--color-brand)]"
                       >
                         {product.name}

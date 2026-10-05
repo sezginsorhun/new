@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { saveSettingsAction, type ContentState } from "@/actions/admin-content";
 import { formatAmount } from "@/lib/money";
+import MediaPicker from "./MediaPicker";
 
 export default function SettingsForm({
   settings,
@@ -37,6 +38,58 @@ export default function SettingsForm({
               defaultValue={settings.site_tagline}
               className="field"
             />
+          </div>
+        </div>
+        <MediaPicker
+          name="logo_url"
+          label="Logo görseli"
+          value={settings.logo_url}
+          hint="Boş bırakırsan site adı yazı olarak gösterilir. Şeffaf PNG veya SVG dışı bir format kullan."
+        />
+      </section>
+
+      {/* Duyuru şeridi */}
+      <section className="card space-y-4 p-5">
+        <h2 className="text-[15px] font-semibold">Üst Duyuru Şeridi</h2>
+        <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+          <input
+            type="checkbox"
+            name="announce_enabled"
+            defaultChecked={settings.announce_enabled === "1"}
+            className="h-4 w-4 accent-[color:var(--color-ink)]"
+          />
+          Duyuru şeridini göster
+        </label>
+        <div>
+          <label className="label" htmlFor="s-announce">Duyuru metinleri</label>
+          <textarea
+            id="s-announce"
+            name="announce_items"
+            rows={3}
+            defaultValue={settings.announce_items}
+            className="field"
+          />
+          <p className="help">Her satır ayrı bir duyurudur; birden fazla satır yazarsan sırayla döner.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="s-abg">Şerit zemin rengi</label>
+            <input id="s-abg" name="announce_bg" type="color" defaultValue={settings.announce_bg} className="field h-[42px] p-1" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-acolor">Şerit yazı rengi</label>
+            <input id="s-acolor" name="announce_color" type="color" defaultValue={settings.announce_color} className="field h-[42px] p-1" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="s-hl">Menüdeki vurgulu bağlantı</label>
+            <input id="s-hl" name="menu_highlight_label" defaultValue={settings.menu_highlight_label} className="field" />
+            <p className="help">Boş bırakırsan menüde görünmez.</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="s-hlu">Vurgulu bağlantı adresi</label>
+            <input id="s-hlu" name="menu_highlight_url" defaultValue={settings.menu_highlight_url} className="field" />
           </div>
         </div>
       </section>
@@ -186,12 +239,19 @@ export default function SettingsForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="s-insta">Instagram adresi</label>
-            <input
-              id="s-insta"
-              name="instagram_url"
-              defaultValue={settings.instagram_url}
-              className="field"
-            />
+            <input id="s-insta" name="instagram_url" defaultValue={settings.instagram_url} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-fb">Facebook adresi</label>
+            <input id="s-fb" name="facebook_url" defaultValue={settings.facebook_url ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-tt">TikTok adresi</label>
+            <input id="s-tt" name="tiktok_url" defaultValue={settings.tiktok_url ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-yt">YouTube adresi</label>
+            <input id="s-yt" name="youtube_url" defaultValue={settings.youtube_url ?? ""} className="field" />
           </div>
           <div>
             <label className="label" htmlFor="s-wa">WhatsApp numarası</label>
@@ -203,6 +263,48 @@ export default function SettingsForm({
               className="field"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Alt bilgi */}
+      <section className="card space-y-4 p-5">
+        <h2 className="text-[15px] font-semibold">Alt Bilgi (Footer)</h2>
+        <div>
+          <label className="label" htmlFor="s-about">Marka açıklaması</label>
+          <textarea id="s-about" name="footer_about" rows={2} defaultValue={settings.footer_about} className="field" />
+        </div>
+
+        <p className="text-[12.5px] text-[color:var(--color-muted)]">
+          Bağlantıları her satıra bir tane olacak şekilde <code>Etiket|/adres</code> biçiminde yaz.
+        </p>
+
+        {[1, 2, 3].map((n) => (
+          <div key={n} className="grid gap-4 sm:grid-cols-[200px_1fr]">
+            <div>
+              <label className="label" htmlFor={`s-fcol${n}`}>{n}. kolon başlığı</label>
+              <input
+                id={`s-fcol${n}`}
+                name={`footer_col${n}_title`}
+                defaultValue={settings[`footer_col${n}_title`]}
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor={`s-flink${n}`}>{n}. kolon bağlantıları</label>
+              <textarea
+                id={`s-flink${n}`}
+                name={`footer_col${n}_links`}
+                rows={4}
+                defaultValue={settings[`footer_col${n}_links`]}
+                className="field font-mono text-[12.5px]"
+              />
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <label className="label" htmlFor="s-fnote">Telif satırı / yasal bilgi</label>
+          <input id="s-fnote" name="footer_note" defaultValue={settings.footer_note} className="field" />
         </div>
       </section>
 

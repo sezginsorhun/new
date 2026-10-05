@@ -4,7 +4,7 @@
  */
 
 import "server-only";
-import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, like, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   categories,
@@ -121,7 +121,7 @@ async function decorateProducts(
       .select({
         productId: reviews.productId,
         avg: sql<number>`avg(${reviews.rating})`.as("avg"),
-        count: sql<number>`count(*)::int`.as("count"),
+        count: sql<number>`count(*)`.as("count"),
       })
       .from(reviews)
       .where(and(inArray(reviews.productId, ids), eq(reviews.isApproved, true)))
@@ -193,9 +193,9 @@ export async function listProducts(options: ProductListOptions = {}) {
     const term = `%${options.search.trim()}%`;
     filters.push(
       or(
-        ilike(products.name, term),
-        ilike(products.description, term),
-        ilike(products.sku, term),
+        like(products.name, term),
+        like(products.description, term),
+        like(products.sku, term),
       )!,
     );
   }
@@ -256,7 +256,7 @@ export async function listProducts(options: ProductListOptions = {}) {
       .orderBy(...orderBy)
       .limit(perPage)
       .offset((page - 1) * perPage),
-    db.select({ count: sql<number>`count(*)::int` }).from(products).where(where),
+    db.select({ count: sql<number>`count(*)` }).from(products).where(where),
   ]);
 
   return {
@@ -492,10 +492,63 @@ export async function getFilterOptions(categorySlug?: string) {
 
 /* -------------------------------- BANNER -------------------------------- */
 
+/**
+ * Yayındaki slaytlar. Yayın tarihi verilmişse zamanı gelmemiş ya da
+ * geçmiş olanlar listelenmez — panelden tarih vererek kampanya slaytı
+ * önceden hazırlanabilir.
+ */
 export async function getBanners(position = "home_hero") {
   return db
     .select()
     .from(banners)
-    .where(and(eq(banners.isActive, true), eq(banners.position, position)))
+    .where(
+      and(
+        eq(banners.isActive, true),
+        eq(banners.position, position),
+        sql`(${banners.startsAt} is null or ${banners.startsAt} <= now())`,
+        sql`(${banners.endsAt} is null or ${banners.endsAt} >= now())`,
+      ),
+    )
     .orderBy(asc(banners.sortOrder));
+}
+
+/** En çok satanlar */
+export async function getBestsellerProducts(limit = 8) {
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      price: products.price,
+      compareAtPrice: products.compareAtPrice,
+      isNew: products.isNew,
+    })
+    .from(products)
+    .where(eq(products.isActive, true))
+    .orderBy(desc(products.soldCount), desc(products.viewCount))
+    .limit(limit);
+  return decorateProducts(rows);
+}
+
+/** Belirli bir kategorinin (alt kategorileri dahil) ürünleri */
+export async function getProductsByCategorySlug(slug: string, limit = 8) {
+  const category = await getCategoryBySlug(slug);
+  if (!category) return [];
+  const ids = await getCategoryIdsWithChildren(category.id);
+  const rows = await db
+    .selectDistinct({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      price: products.price,
+      compareAtPrice: products.compareAtPrice,
+      isNew: products.isNew,
+      createdAt: products.createdAt,
+    })
+    .from(products)
+    .innerJoin(productCategories, eq(productCategories.productId, products.id))
+    .where(and(eq(products.isActive, true), inArray(productCategories.categoryId, ids)))
+    .orderBy(desc(products.createdAt))
+    .limit(limit);
+  return decorateProducts(rows);
 }

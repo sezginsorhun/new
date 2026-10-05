@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
+import { createId } from "@/lib/id";
 import {
   productCategories,
   productImages,
@@ -12,6 +13,8 @@ import {
   stockMovements,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { assertSameOrigin } from "@/lib/security";
 import { slugify } from "@/lib/utils";
 import { parsePrice } from "@/lib/money";
 
@@ -67,7 +70,8 @@ export async function saveProductAction(
   _prev: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const parsed = productSchema.safeParse(readProductForm(formData));
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
@@ -111,8 +115,9 @@ export async function saveProductAction(
     if (id) {
       await db.update(products).set(values).where(eq(products.id, id));
     } else {
-      const [created] = await db.insert(products).values(values).returning();
-      productId = created.id;
+      // MySQL'de RETURNING yok: kimliği önce üretiyoruz.
+      productId = createId();
+      await db.insert(products).values({ ...values, id: productId });
     }
   } catch (error) {
     const message = (error as Error).message;
@@ -143,7 +148,10 @@ export async function saveProductAction(
 }
 
 export async function deleteProductAction(id: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  await logAudit({ action: "product.delete", userId: admin.id, actorEmail: admin.email,
+    entity: "product", entityId: id });
   await db.delete(products).where(eq(products.id, id));
   revalidatePath("/admin/urunler");
   revalidatePath("/");
@@ -151,7 +159,10 @@ export async function deleteProductAction(id: string) {
 }
 
 export async function toggleProductActiveAction(id: string, isActive: boolean) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  await logAudit({ action: "product.update", userId: admin.id, actorEmail: admin.email,
+    entity: "product", entityId: id, summary: isActive ? "Ürün yayına alındı" : "Ürün gizlendi" });
   await db.update(products).set({ isActive }).where(eq(products.id, id));
   revalidatePath("/admin/urunler");
   revalidatePath("/");
@@ -166,11 +177,12 @@ export async function addProductImageAction(
   colorName: string | null,
   alt: string | null,
 ) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   if (!url.trim()) return { ok: false, message: "Görsel adresi boş." };
 
   const existing = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`count(*)` })
     .from(productImages)
     .where(eq(productImages.productId, productId));
 
@@ -187,7 +199,8 @@ export async function addProductImageAction(
 }
 
 export async function deleteProductImageAction(imageId: string, productId: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(productImages).where(eq(productImages.id, imageId));
   revalidatePath(`/admin/urunler/${productId}`);
   return { ok: true };
@@ -198,7 +211,8 @@ export async function reorderProductImageAction(
   productId: string,
   direction: "up" | "down",
 ) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   const images = await db
     .select()
     .from(productImages)
@@ -242,7 +256,8 @@ export async function saveVariantAction(
   _prev: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const productId = String(formData.get("productId") ?? "");
   if (!productId) return { ok: false, message: "Ürün bulunamadı." };
@@ -303,10 +318,11 @@ export async function saveVariantAction(
         });
       }
     } else {
-      const [created] = await db.insert(productVariants).values(values).returning();
+      const newVariantId = createId();
+      await db.insert(productVariants).values({ ...values, id: newVariantId });
       if (parsed.data.stock > 0) {
         await db.insert(stockMovements).values({
-          variantId: created.id,
+          variantId: newVariantId,
           type: "PURCHASE",
           quantity: parsed.data.stock,
           note: "İlk stok girişi",
@@ -330,7 +346,8 @@ export async function saveVariantAction(
 }
 
 export async function deleteVariantAction(variantId: string, productId: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(productVariants).where(eq(productVariants.id, variantId));
   revalidatePath(`/admin/urunler/${productId}`);
   return { ok: true };
@@ -338,7 +355,10 @@ export async function deleteVariantAction(variantId: string, productId: string) 
 
 /** Hızlı stok güncelleme (stok sayfasından) */
 export async function updateStockAction(variantId: string, stock: number) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  await logAudit({ action: "stock.update", userId: admin.id, actorEmail: admin.email,
+    entity: "variant", entityId: variantId, summary: `Stok ${stock} olarak ayarlandı` });
   if (stock < 0) return { ok: false, message: "Stok negatif olamaz." };
 
   const before = await db
@@ -373,7 +393,8 @@ export async function generateVariantsAction(
   sizes: string[],
   stock: number,
 ) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   if (colors.length === 0 || sizes.length === 0) {
     return { ok: false, message: "En az bir renk ve bir beden gir." };
   }
@@ -403,9 +424,11 @@ export async function generateVariantsAction(
         .limit(1);
       if (existing[0]) continue;
 
-      const [variant] = await db
+      const variantId = createId();
+      await db
         .insert(productVariants)
         .values({
+          id: variantId,
           productId,
           sku: `${baseSku}-${slugify(color.name).slice(0, 3).toUpperCase()}-${size}`,
           size,
@@ -413,12 +436,11 @@ export async function generateVariantsAction(
           colorHex: color.hex,
           stock,
           sortOrder: order++,
-        })
-        .returning();
+        });
 
       if (stock > 0) {
         await db.insert(stockMovements).values({
-          variantId: variant.id,
+          variantId,
           type: "PURCHASE",
           quantity: stock,
           note: "Toplu varyant oluşturma",

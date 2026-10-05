@@ -18,7 +18,7 @@ import {
   productImages,
   coupons,
 } from "@/db/schema";
-import { createToken } from "@/lib/id";
+import { createToken, createId } from "@/lib/id";
 import { getSession } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 
@@ -91,10 +91,14 @@ export async function getOrCreateCart(): Promise<{ id: string; token: string }> 
     }
 
     const newToken = createToken();
-    const created = await db
-      .insert(carts)
-      .values({ token: newToken, userId: session.userId })
-      .returning();
+    // MySQL'de RETURNING yok: kimliği önce üretip yazıyoruz.
+    const newCartId = createId();
+    await db.insert(carts).values({
+      id: newCartId,
+      token: newToken,
+      userId: session.userId,
+    });
+    const created = [{ id: newCartId, token: newToken }];
     store.set(CART_COOKIE, newToken, cookieOptions());
     return { id: created[0].id, token: newToken };
   }
@@ -106,7 +110,9 @@ export async function getOrCreateCart(): Promise<{ id: string; token: string }> 
   }
 
   token = createToken();
-  const created = await db.insert(carts).values({ token }).returning();
+  const guestCartId = createId();
+  await db.insert(carts).values({ id: guestCartId, token });
+  const created = [{ id: guestCartId, token }];
   store.set(CART_COOKIE, token, cookieOptions());
   return { id: created[0].id, token };
 }
@@ -160,8 +166,7 @@ async function mergeGuestCart(guestToken: string, targetCartId: string) {
         variantId: item.variantId,
         quantity: item.quantity,
       })
-      .onConflictDoUpdate({
-        target: [cartItems.cartId, cartItems.variantId],
+      .onDuplicateKeyUpdate({
         set: { quantity: sql`${cartItems.quantity} + ${item.quantity}` },
       });
   }
@@ -204,8 +209,7 @@ export async function addToCart(variantId: string, quantity = 1) {
   await db
     .insert(cartItems)
     .values({ cartId: cart.id, variantId, quantity })
-    .onConflictDoUpdate({
-      target: [cartItems.cartId, cartItems.variantId],
+    .onDuplicateKeyUpdate({
       set: { quantity: desired },
     });
 

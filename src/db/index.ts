@@ -1,11 +1,12 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import * as schema from "./schema";
 
 /**
- * Veritabanı bağlantısı.
- * Next.js dev modunda her hot-reload'da yeni havuz açılmasın diye
- * globalThis üzerinde saklanır.
+ * VERİTABANI BAĞLANTISI (MySQL / MariaDB)
+ *
+ * Next.js geliştirme modunda her sıcak yenilemede yeni havuz açılmasın diye
+ * bağlantı havuzu globalThis üzerinde saklanır.
  */
 
 const connectionString = process.env.DATABASE_URL;
@@ -14,19 +15,37 @@ if (!connectionString) {
 }
 
 const globalForDb = globalThis as unknown as {
-  __pgClient?: ReturnType<typeof postgres>;
+  __mysqlPool?: mysql.Pool;
 };
 
-const client =
-  globalForDb.__pgClient ??
-  postgres(connectionString, {
-    max: process.env.NODE_ENV === "production" ? 10 : 3,
-    idle_timeout: 20,
-    prepare: false, // Supabase/Neon pooler uyumluluğu için
+/**
+ * Havuzdaki en fazla bağlantı sayısı.
+ * Paylaşımlı hosting'de eşzamanlı bağlantı sınırı düşüktür; havuzu küçük
+ * tutmak "too many connections" hatasını önler. Gerekirse .env'den
+ * DB_POOL_MAX ile büyütebilirsin.
+ */
+const poolMax =
+  Number(process.env.DB_POOL_MAX) ||
+  (process.env.NODE_ENV === "production" ? 5 : 3);
+
+const pool =
+  globalForDb.__mysqlPool ??
+  mysql.createPool({
+    uri: connectionString,
+    connectionLimit: poolMax,
+    waitForConnections: true,
+    connectTimeout: 15_000,
+    enableKeepAlive: true,
+    // Tarih sütunları JS Date olarak gelsin (drizzle bunu bekliyor)
+    dateStrings: false,
+    // Para alanları tam sayı; BIGINT'i string'e çevirmeye gerek yok
+    supportBigNumbers: true,
+    bigNumberStrings: false,
+    timezone: "Z",
   });
 
-if (process.env.NODE_ENV !== "production") globalForDb.__pgClient = client;
+if (process.env.NODE_ENV !== "production") globalForDb.__mysqlPool = pool;
 
-export const db = drizzle(client, { schema });
+export const db = drizzle(pool, { schema, mode: "default" });
 export { schema };
 export * from "./schema";

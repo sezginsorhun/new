@@ -10,23 +10,29 @@
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
+import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/mysql2";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
+import { eq } from "drizzle-orm";
 import * as schema from "./schema";
 import { slugify } from "../lib/utils";
+import { createId } from "../lib/id";
 import {
   writeProductImage,
   writeBannerImage,
   writeCategoryImage,
 } from "./placeholder-images";
 
-const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
-const db = drizzle(client, { schema });
+// Bağlantı main() içinde açılır — dosya seviyesinde await kullanılamıyor.
+let client: mysql.Connection;
+let db: ReturnType<typeof drizzle<typeof schema, mysql.Connection>>;
 
 const {
   users, categories, brands, products, productCategories, productImages,
   productVariants, coupons, settings, banners, pages, contactMessages,
+  homeSections, mediaAssets, sessions, loginAttempts, auditLogs,
+  twoFactorCodes, trustedDevices, userSecurity,
   newsletterSubscribers, orders, orderItems, payments, carts, cartItems,
   favorites, reviews, stockMovements, addresses,
 } = schema;
@@ -254,6 +260,12 @@ const SEED_PRODUCTS: SeedProduct[] = [
 /* --------------------------------- AKIŞ --------------------------------- */
 
 async function main() {
+  client = await mysql.createConnection({
+    uri: process.env.DATABASE_URL!,
+    multipleStatements: false,
+  });
+  db = drizzle(client, { schema, mode: "default" });
+
   console.log("→ Mevcut veriler temizleniyor...");
   await db.delete(stockMovements);
   await db.delete(orderItems);
@@ -271,6 +283,14 @@ async function main() {
   await db.delete(brands);
   await db.delete(coupons);
   await db.delete(banners);
+  await db.delete(homeSections);
+  await db.delete(mediaAssets);
+  await db.delete(auditLogs);
+  await db.delete(loginAttempts);
+  await db.delete(twoFactorCodes);
+  await db.delete(trustedDevices);
+  await db.delete(sessions);
+  await db.delete(userSecurity);
   await db.delete(pages);
   await db.delete(contactMessages);
   await db.delete(newsletterSubscribers);
@@ -294,11 +314,29 @@ async function main() {
     },
   ]);
 
+  /* --- Yönetici güvenlik kaydı --- */
+  // Adminde iki adımlı doğrulama açıktır. SMTP tanımlı değilse giriş kodu
+  // sunucu konsoluna yazılır; yedek kodlar aşağıda bir kez gösterilir.
+  const [adminUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, "admin@alenora.com"))
+    .limit(1);
+
+  const backupPlain = Array.from({ length: 8 }, () =>
+    randomBytes(5).toString("hex").toUpperCase().match(/.{1,5}/g)!.join("-"),
+  );
+  await db.insert(userSecurity).values({
+    userId: adminUser.id,
+    twoFactorEnabled: true,
+    backupCodes: await Promise.all(backupPlain.map((code) => bcrypt.hash(code, 10))),
+  });
+
   /* --- Marka --- */
-  const [brand] = await db
-    .insert(brands)
-    .values({ name: "Alenora", slug: "alenora" })
-    .returning();
+  // MySQL'de RETURNING yok: kimlikleri önce üretip öyle yazıyoruz.
+  const brandId = createId();
+  await db.insert(brands).values({ id: brandId, name: "Alenora", slug: "alenora" });
+  const brand = { id: brandId };
 
   /* --- Kategoriler --- */
   console.log("→ Kategoriler...");
@@ -307,24 +345,28 @@ async function main() {
 
   for (const parent of CATEGORY_TREE) {
     const parentSlug = slugify(parent.name);
-    const [parentRow] = await db
+    const parentCategoryId = createId();
+    await db
       .insert(categories)
       .values({
+        id: parentCategoryId,
         name: parent.name,
         slug: parentSlug,
         sortOrder: sort++,
         imageUrl: writeCategoryImage(`${parentSlug}.svg`, parent.name, parent.color),
         metaTitle: `${parent.name} İç Giyim`,
         metaDescription: `${parent.name} iç giyim ürünleri, en yeni koleksiyon ve indirimli fiyatlar.`,
-      })
-      .returning();
+      });
+    const parentRow = { id: parentCategoryId };
     categoryIdBySlug.set(parentSlug, parentRow.id);
 
     for (const child of parent.children) {
       const childSlug = slugify(child.name);
-      const [childRow] = await db
+      const childCategoryId = createId();
+      await db
         .insert(categories)
         .values({
+          id: childCategoryId,
           name: child.name,
           slug: childSlug,
           parentId: parentRow.id,
@@ -332,8 +374,8 @@ async function main() {
           imageUrl: writeCategoryImage(`${childSlug}.svg`, child.name, child.color),
           metaTitle: `${child.name} Modelleri`,
           metaDescription: `${child.name} modelleri ve fiyatları. Aynı gün kargo.`,
-        })
-        .returning();
+        });
+      const childRow = { id: childCategoryId };
       categoryIdBySlug.set(childSlug, childRow.id);
     }
   }
@@ -347,9 +389,11 @@ async function main() {
     const slug = slugify(item.name);
     const sku = `ALN-${skuCounter++}`;
 
-    const [product] = await db
+    const productId = createId();
+    await db
       .insert(products)
       .values({
+        id: productId,
         name: item.name,
         slug,
         sku,
@@ -370,8 +414,8 @@ async function main() {
         metaTitle: item.name,
         metaDescription: item.description.slice(0, 155),
         soldCount: Math.floor(Math.random() * 120),
-      })
-      .returning();
+      });
+    const product = { id: productId };
 
     // Kategori bağlantısı (alt kategori + üst kategori)
     const childId = categoryIdBySlug.get(slugify(item.category));
@@ -415,9 +459,11 @@ async function main() {
     for (const color of item.colors) {
       for (const size of item.sizes) {
         const stock = Math.floor(Math.random() * 18); // 0-17 (bazıları tükenmiş görünsün)
-        const [variant] = await db
+        const variantId = createId();
+        await db
           .insert(productVariants)
           .values({
+            id: variantId,
             productId: product.id,
             sku: `${sku}-${slugify(color.name).slice(0, 3).toUpperCase()}-${size}`,
             size,
@@ -425,8 +471,8 @@ async function main() {
             colorHex: color.hex,
             stock,
             sortOrder: variantOrder++,
-          })
-          .returning();
+          });
+        const variant = { id: variantId };
 
         if (stock > 0) {
           await db.insert(stockMovements).values({
@@ -457,34 +503,95 @@ async function main() {
     },
   ]);
 
-  /* --- Bannerlar --- */
-  console.log("→ Bannerlar...");
+  /* --- Carousel slaytları --- */
+  console.log("→ Carousel slaytları...");
+  const heroImages = [
+    { file: "hero-1.svg", color: "Pudra" },
+    { file: "hero-2.svg", color: "Vizon" },
+    { file: "hero-3.svg", color: "Lacivert" },
+  ].map((item) => writeBannerImage(item.file, item.color));
+
   await db.insert(banners).values([
     {
-      title: "Yeni Sezon Dantel Koleksiyonu",
-      subtitle: "Her tende güzel",
-      imageUrl: writeBannerImage("hero-1.svg", "Pudra"),
+      eyebrow: "Yeni sezon",
+      title: "Dantel Koleksiyonu",
+      subtitle: "İnce dantel, esnek destek, gün boyu konfor.",
+      imageUrl: heroImages[0],
+      imageAlt: "Dantelli iç giyim takımı",
       linkUrl: "/kategori/kadin",
-      buttonLabel: "Koleksiyonu Keşfet",
-      position: "home_hero", sortOrder: 0,
+      buttonLabel: "Koleksiyonu keşfet",
+      secondaryLabel: "Tüm yenilikler",
+      secondaryUrl: "/kategori/kadin",
+      align: "left", theme: "light", overlay: 32,
+      position: "home_hero", sortOrder: 10, isActive: true,
     },
     {
+      eyebrow: "Gün boyu rahatlık",
       title: "Pamuklu Konfor Serisi",
-      subtitle: "Gün boyu rahatlık",
-      imageUrl: writeBannerImage("hero-2.svg", "Vizon"),
+      subtitle: "Nefes alan sertifikalı kumaş, dikişsiz kesim.",
+      imageUrl: heroImages[1],
+      imageAlt: "Pamuklu iç giyim serisi",
       linkUrl: "/kategori/kulot",
-      buttonLabel: "Ürünleri Gör",
-      position: "home_hero", sortOrder: 1,
+      buttonLabel: "Ürünleri gör",
+      align: "left", theme: "light", overlay: 28,
+      position: "home_hero", sortOrder: 20, isActive: true,
     },
     {
+      eyebrow: "3'lü paketlerde avantaj",
       title: "Erkek İç Giyim",
-      subtitle: "3'lü paketlerde avantaj",
-      imageUrl: writeBannerImage("hero-3.svg", "Lacivert"),
+      subtitle: "Boxer ve atletlerde çoklu paket fiyatları.",
+      imageUrl: heroImages[2],
+      imageAlt: "Erkek iç giyim paketleri",
       linkUrl: "/kategori/erkek",
       buttonLabel: "İncele",
-      position: "home_hero", sortOrder: 2,
+      align: "left", theme: "light", overlay: 35,
+      position: "home_hero", sortOrder: 30, isActive: true,
     },
   ]);
+
+  // Slayt görselleri medya kütüphanesine de eklenir ki panelden
+  // tekrar seçilebilsinler.
+  await db.insert(mediaAssets).values(
+    heroImages.map((url, index) => ({
+      url,
+      fileName: `hero-${index + 1}.svg`,
+      mimeType: "image/svg+xml",
+      sizeBytes: 0,
+      alt: "Örnek slayt görseli",
+      folder: "slaytlar",
+      // Bu görseller depoda duran statik dosyalar, yüklenmiş değil
+      storage: "file",
+    })),
+  );
+
+  /* --- Ana sayfa düzeni --- */
+  console.log("→ Ana sayfa düzeni...");
+  const { DEFAULT_SECTIONS } = await import("../lib/home-config");
+  const promoImage = writeBannerImage("promo-1.svg", "Bordo");
+  await db.insert(homeSections).values(
+    DEFAULT_SECTIONS.map((section) => ({
+      type: section.type,
+      title: section.title,
+      subtitle: section.subtitle,
+      // Tanıtım bandına örnek bir görsel ver; panelden değiştirilebilir.
+      config:
+        section.type === "promo"
+          ? { ...section.config, imageUrl: promoImage }
+          : section.config,
+      sortOrder: section.sortOrder,
+      isActive: section.isActive,
+    })),
+  );
+
+  await db.insert(mediaAssets).values({
+    url: promoImage,
+    fileName: "promo-1.svg",
+    mimeType: "image/svg+xml",
+    sizeBytes: 0,
+    alt: "Örnek tanıtım görseli",
+    folder: "tanitim",
+    storage: "file",
+  });
 
   /* --- Kurumsal sayfalar --- */
   console.log("→ Sayfalar...");
@@ -524,14 +631,24 @@ async function main() {
     .values(Object.entries(DEFAULT_SETTINGS).map(([key, value]) => ({ key, value })));
 
   /* --- Özet --- */
-  const [{ count: productCount }] = await client`select count(*)::int from products`;
-  const [{ count: variantCount }] = await client`select count(*)::int from product_variants`;
-  const [{ count: categoryCount }] = await client`select count(*)::int from categories`;
+  const countOf = async (table: string) => {
+    const [rows] = await client.query(`select count(*) as c from \`${table}\``);
+    return (rows as Array<{ c: number }>)[0]?.c ?? 0;
+  };
+  const productCount = await countOf("products");
+  const variantCount = await countOf("product_variants");
+  const categoryCount = await countOf("categories");
 
   console.log("\n✓ Örnek veriler yüklendi");
   console.log(`  ${categoryCount} kategori, ${productCount} ürün, ${variantCount} varyant`);
   console.log("\n  Admin girişi : admin@alenora.com / Admin123!");
-  console.log("  Müşteri      : musteri@ornek.com / Test123!\n");
+  console.log("  Müşteri      : musteri@ornek.com / Test123!");
+  console.log(`\n  Yönetim paneli: /${process.env.ADMIN_PATH ?? "yonetim"}`);
+  console.log("  Admin girişinde e-postaya 6 haneli kod gider.");
+  console.log("  SMTP tanımlı değilse kod sunucu konsoluna yazılır.");
+  console.log("\n  YEDEK KODLAR (bir kez gösterilir, güvenli bir yere kaydet):");
+  for (const code of backupPlain) console.log("    " + code);
+  console.log("");
 
   await client.end();
 }

@@ -117,3 +117,55 @@ export async function sendShippingNotice(
     ),
   );
 }
+
+/* ========================================================================== */
+/*  GÜVENLİK E-POSTALARI                                                      */
+/* ========================================================================== */
+
+/** Yönetici girişinde iki adımlı doğrulama kodu */
+export async function sendTwoFactorCode(params: {
+  to: string;
+  name: string;
+  code: string;
+  minutes: number;
+}) {
+  await send(
+    params.to,
+    `Yönetim paneli doğrulama kodu: ${params.code}`,
+    layout(
+      "Giriş doğrulama kodu",
+      `<p style="font-size:14px;line-height:1.6">Merhaba ${params.name},<br>
+       Yönetim paneline giriş için doğrulama kodun:</p>
+       <p style="margin:22px 0;font-size:34px;font-weight:700;letter-spacing:.3em;
+          text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${params.code}</p>
+       <p style="font-size:13px;color:#6b5d57;line-height:1.6">
+         Kod <strong>${params.minutes} dakika</strong> geçerlidir ve yalnızca bir kez kullanılabilir.<br>
+         Bu girişi sen yapmadıysan şifreni hemen değiştir — birisi şifreni biliyor olabilir.</p>`,
+    ),
+  );
+}
+
+/** Yeni cihazdan giriş bildirimi */
+export async function sendNewLoginNotice(params: {
+  to: string;
+  name: string;
+  device: string;
+  ip: string;
+  at: Date;
+}) {
+  await send(
+    params.to,
+    "Hesabına yeni bir cihazdan giriş yapıldı",
+    layout(
+      "Yeni giriş bildirimi",
+      `<p style="font-size:14px;line-height:1.6">Merhaba ${params.name},<br>
+       Hesabına yeni bir cihazdan giriş yapıldı.</p>
+       <p style="font-size:13px;color:#6b5d57;line-height:1.8">
+         Cihaz: <strong>${params.device}</strong><br>
+         IP: ${params.ip}<br>
+         Zaman: ${params.at.toLocaleString("tr-TR")}</p>
+       <p style="font-size:13px;color:#6b5d57">Bu sen değilsen şifreni değiştir ve
+       hesap ayarlarından tüm oturumları kapat.</p>`,
+    ),
+  );
+}

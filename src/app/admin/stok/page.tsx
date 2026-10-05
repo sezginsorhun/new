@@ -1,5 +1,6 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
-import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, eq, like, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import { db } from "@/db";
 import { productVariants, products } from "@/db/schema";
@@ -14,9 +15,9 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
   if (term) {
     filters.push(
       or(
-        ilike(products.name, `%${term}%`),
-        ilike(productVariants.sku, `%${term}%`),
-        ilike(productVariants.barcode, `%${term}%`),
+        like(products.name, `%${term}%`),
+        like(productVariants.sku, `%${term}%`),
+        like(productVariants.barcode, `%${term}%`),
       )!,
     );
   }
@@ -45,9 +46,9 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
 
   const totals = await db
     .select({
-      totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)::int`,
-      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} = 0)::int`,
-      lowStock: sql<number>`count(*) filter (where ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAlert})::int`,
+      totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)`,
+      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} = 0)`,
+      lowStock: sql<number>`count(*) filter (where ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAlert})`,
     })
     .from(productVariants);
 
@@ -67,7 +68,7 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
         ].map((tab) => (
           <Link
             key={tab.value}
-            href={tab.value ? `/admin/stok?filtre=${tab.value}` : "/admin/stok"}
+            href={tab.value ? adminUrl(`stok?filtre=${tab.value}`) : adminUrl("stok")}
             className={`border px-3 py-1.5 text-[12px] ${
               filter === tab.value
                 ? "border-[color:var(--color-ink)] bg-[color:var(--color-ink)] text-white"

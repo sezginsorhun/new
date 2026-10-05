@@ -1,33 +1,53 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   TASARIM SİSTEMİ
-   Renkler, tipografi ve aralıklar burada tek noktadan tanımlı.
-   Markanın rengini değiştirmek için sadece --brand değerlerini değiştir.
+   TASARIM SİSTEMİ — minimal, yüksek kontrast, alışverişe odaklı
+   --------------------------------------------------------------------------
+   Yaklaşım:
+     • Zemin beyaz, yazı neredeyse siyah. Göz ürüne gider, arayüze değil.
+     • Tek vurgu rengi var (--color-brand). İndirim, kampanya ve bağlantılarda
+       kullanılır; her yerde kullanılmaz, yoksa vurgu olmaktan çıkar.
+     • Köşeler neredeyse düz, gölge yok, çizgiler ince. Sade ve hızlı görünür.
+     • Tipografi tek aileden: başlıklar sıkı harf aralığı ve kalın ağırlıkla
+       ayrışır, ayrı bir serif yazı tipi kullanılmaz.
+   Markanın rengini değiştirmek için sadece --color-brand satırlarını değiştir.
    ========================================================================== */
 
 @theme {
-  /* --- Renkler --- */
-  --color-cream: #fbf8f6; /* sayfa zemini */
-  --color-surface: #ffffff; /* kart zemini */
-  --color-ink: #2b2321; /* ana yazı */
-  --color-ink-soft: #6b5d57; /* ikincil yazı */
-  --color-muted: #948681; /* soluk yazı */
-  --color-line: #ece2dd; /* ince çizgi */
-  --color-line-strong: #dccfc8;
+  /* --- Zemin ve yüzeyler --- */
+  --color-cream: #ffffff;      /* sayfa zemini (eski isim korundu) */
+  --color-surface: #ffffff;    /* kart zemini */
+  --color-surface-2: #f6f4f3;  /* vurgulu bölüm zemini */
+  --color-surface-3: #efebe8;  /* görsel yer tutucu */
 
-  --color-brand: #a4785f; /* marka rengi (sıcak taba) */
-  --color-brand-dark: #8a6049;
-  --color-brand-soft: #f3e7e0;
+  /* --- Yazı --- */
+  --color-ink: #141110;        /* ana yazı */
+  --color-ink-soft: #5a524e;   /* ikincil yazı */
+  --color-muted: #8b8380;      /* soluk yazı */
 
-  --color-sale: #b4453c; /* indirim / uyarı */
-  --color-success: #4b7c59;
+  /* --- Çizgiler --- */
+  --color-line: #e7e3e0;
+  --color-line-strong: #d4ceca;
+
+  /* --- Vurgu --- */
+  --color-brand: #c62a4e;
+  --color-brand-dark: #a41f3e;
+  --color-brand-soft: #fdeef1;
+
+  /* --- Durum --- */
+  --color-sale: #c62a4e;
+  --color-success: #16794b;
+  --color-ok: #16794b;
+  --color-warn: #9a6a1c;
 
   /* --- Tipografi --- */
-  --font-display: Georgia, "Times New Roman", "Iowan Old Style", serif;
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* Başlıklar da aynı aileyi kullanır; fark ağırlık ve harf aralığındadır. */
+  --font-display:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 
   /* --- Yuvarlatma --- */
   --radius-card: 2px;
@@ -52,18 +72,19 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 15px;
-    line-height: 1.6;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
     color: var(--color-ink);
+    text-wrap: balance;
   }
 
-  /* Form alanları için tutarlı temel */
   input, select, textarea, button {
     font: inherit;
     color: inherit;
@@ -71,11 +92,10 @@
 
   /* Klavye ile gezinme görünürlüğü (erişilebilirlik) */
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-ink);
     outline-offset: 2px;
   }
 
-  /* Sayı input'larındaki okları kaldır */
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -83,6 +103,11 @@
   }
   input[type="number"] {
     -moz-appearance: textfield;
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: #fff;
   }
 }
 
@@ -93,16 +118,16 @@
 @layer components {
   /* --- Butonlar ---
      Tailwind v4'te @apply ile kendi bileşen sınıfını çağırmak mümkün değil,
-     bu yüzden ortak stiller :is(...) seçicisiyle paylaştırılıyor. */
+     bu yüzden ortak stiller seçici listesiyle paylaştırılıyor. */
   .btn,
   .btn-primary,
   .btn-brand,
   .btn-outline,
   .btn-ghost {
-    @apply inline-flex select-none items-center justify-center gap-2 px-6 py-3
-           text-[13px] font-medium uppercase tracking-[0.08em]
-           transition-all duration-200
-           disabled:cursor-not-allowed disabled:opacity-45;
+    @apply inline-flex select-none items-center justify-center gap-2 px-6 py-3.5
+           text-[13px] font-semibold tracking-[0.02em]
+           transition-colors duration-150
+           disabled:cursor-not-allowed disabled:opacity-40;
     border-radius: var(--radius-card);
     border: 1px solid transparent;
   }
@@ -112,7 +137,7 @@
     color: #fff;
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-brand-dark);
+    background-color: #000;
   }
 
   .btn-brand {
@@ -125,43 +150,44 @@
 
   .btn-outline {
     background-color: transparent;
-    border-color: var(--color-line-strong);
+    border-color: var(--color-ink);
     color: var(--color-ink);
   }
   .btn-outline:hover:not(:disabled) {
-    border-color: var(--color-ink);
-    background-color: #fff;
+    background-color: var(--color-ink);
+    color: #fff;
   }
 
   .btn-ghost {
-    @apply px-3 py-2 text-[13px] normal-case tracking-normal;
+    @apply px-3 py-2 text-[13px] font-medium;
     background-color: transparent;
     color: var(--color-ink-soft);
   }
   .btn-ghost:hover:not(:disabled) {
     color: var(--color-ink);
+    background-color: var(--color-surface-2);
   }
 
   .btn-sm {
-    @apply px-4 py-2 text-[11px];
+    @apply px-4 py-2.5 text-[12px];
   }
 
   /* --- Form --- */
   .field {
-    @apply w-full bg-white px-3.5 py-2.5 text-[14px] transition-colors
+    @apply w-full bg-white px-3.5 py-3 text-[14px] transition-colors
            placeholder:text-[color:var(--color-muted)];
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-card);
   }
   .field:focus {
-    border-color: var(--color-brand);
+    border-color: var(--color-ink);
     outline: none;
   }
   .field-error {
     border-color: var(--color-sale);
   }
   .label {
-    @apply mb-1.5 block text-[12px] font-medium tracking-wide;
+    @apply mb-1.5 block text-[12.5px] font-medium;
     color: var(--color-ink-soft);
   }
   .help {
@@ -169,7 +195,7 @@
     color: var(--color-muted);
   }
   .error-text {
-    @apply mt-1 text-[12px];
+    @apply mt-1 text-[12.5px];
     color: var(--color-sale);
   }
 
@@ -182,28 +208,56 @@
 
   /* --- Başlık üstü küçük etiket --- */
   .eyebrow {
-    @apply text-[11px] font-medium uppercase tracking-[0.22em];
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em];
     color: var(--color-brand);
   }
 
   /* --- Rozet --- */
   .badge {
-    @apply inline-flex items-center px-2 py-1 text-[10px] font-semibold
-           uppercase tracking-[0.12em];
+    @apply inline-flex items-center px-2 py-1 text-[10px] font-bold
+           uppercase tracking-[0.1em];
   }
+  .badge-sale   { background: var(--color-brand); color: #fff; }
+  .badge-new    { background: var(--color-ink); color: #fff; }
+  .badge-soft   { background: var(--color-surface-2); color: var(--color-ink); }
+  .badge-ok     { background: #e8f3ed; color: var(--color-ok); }
+  .badge-warn   { background: #fcf2e2; color: var(--color-warn); }
+  .badge-bad    { background: var(--color-brand-soft); color: var(--color-brand-dark); }
+  .badge-mute   { background: var(--color-surface-2); color: var(--color-muted); }
 
   /* --- Bölüm genişliği --- */
   .container-page {
-    @apply mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-10;
+    @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10;
   }
 
-  /* --- Tablo (admin) --- */
+  /* --- Bölüm başlığı --- */
+  .section-head {
+    @apply mb-6 flex flex-wrap items-end justify-between gap-3;
+  }
+  .section-head h2 {
+    @apply text-[22px] sm:text-[26px];
+  }
+
+  /* --- Yatay kaydırmalı ürün rayı --- */
+  .rail {
+    @apply -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .rail > * {
+    @apply w-[62%] shrink-0 snap-start sm:w-[42%] md:w-[31%] lg:w-[23.5%];
+  }
+
+  /* --- Tablo (yönetim) --- */
   .table-basic {
     @apply w-full text-left text-[13px];
   }
   .table-basic th {
     @apply whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase
-           tracking-[0.1em];
+           tracking-[0.08em];
     color: var(--color-muted);
     border-bottom: 1px solid var(--color-line);
   }
@@ -212,7 +266,19 @@
     border-bottom: 1px solid var(--color-line);
   }
   .table-basic tbody tr:hover {
-    background-color: #fdfbfa;
+    background-color: var(--color-surface-2);
+  }
+
+  /* --- Yer tutucu / yükleniyor --- */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2) 25%,
+      #faf8f7 37%,
+      var(--color-surface-2) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.3s ease infinite;
   }
 }
 
@@ -252,6 +318,23 @@
   }
   .animate-fade-up {
     animation: fade-up 0.35s ease-out both;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+}
+
+/* Hareketi azaltma tercihine saygı */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

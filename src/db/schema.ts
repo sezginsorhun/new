@@ -1,6 +1,6 @@
 /**
  * VERİTABANI ŞEMASI — İç giyim e-ticaret
- * PostgreSQL + Drizzle ORM
+ * MySQL / MariaDB + Drizzle ORM
  *
  * ÖNEMLİ KURAL: Tüm para alanları KURUŞ cinsinden tam sayı (integer) tutulur.
  * 299,90 TL  ->  29990
@@ -8,30 +8,37 @@
  */
 
 import {
-  pgTable,
+  mysqlTable,
   text,
   varchar,
-  integer,
+  int,
   boolean,
-  timestamp,
-  jsonb,
-  pgEnum,
+  datetime,
+  json,
+  mysqlEnum,
   uniqueIndex,
   index,
   primaryKey,
-  serial,
-  pgSequence,
-} from "drizzle-orm/pg-core";
+  customType,
+} from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@/lib/id";
+
+/**
+ * İkili veri sütunu (MySQL `longblob`) — Drizzle'ın hazır tipi yok.
+ * Görsel baytları burada saklanır; 4 GB'a kadar veri alır.
+ */
+const binaryColumn = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "longblob",
+});
 
 /* ========================================================================== */
 /*  ENUM'LAR                                                                  */
 /* ========================================================================== */
 
-export const roleEnum = pgEnum("role", ["CUSTOMER", "ADMIN"]);
+export const ROLE_VALUES = ["CUSTOMER", "ADMIN"] as const;
 
-export const orderStatusEnum = pgEnum("order_status", [
+export const ORDER_STATUS_VALUES = [
   "PENDING", // ödeme bekleniyor
   "PAID", // ödeme alındı
   "PREPARING", // hazırlanıyor
@@ -40,40 +47,40 @@ export const orderStatusEnum = pgEnum("order_status", [
   "CANCELLED", // iptal edildi
   "REFUNDED", // iade edildi
   "FAILED", // ödeme başarısız
-]);
+] as const;
 
-export const paymentMethodEnum = pgEnum("payment_method", [
+export const PAYMENT_METHOD_VALUES = [
   "CREDIT_CARD", // iyzico 3D Secure
   "BANK_TRANSFER", // havale / EFT
   "CASH_ON_DELIVERY", // kapıda ödeme
-]);
+] as const;
 
-export const paymentStatusEnum = pgEnum("payment_status", [
+export const PAYMENT_STATUS_VALUES = [
   "PENDING",
   "SUCCESS",
   "FAILED",
   "REFUNDED",
-]);
+] as const;
 
-export const couponTypeEnum = pgEnum("coupon_type", [
+export const COUPON_TYPE_VALUES = [
   "PERCENT", // yüzde indirim
   "FIXED", // sabit tutar indirim
   "FREE_SHIPPING", // ücretsiz kargo
-]);
+] as const;
 
-export const stockMovementEnum = pgEnum("stock_movement_type", [
+export const STOCK_MOVEMENT_VALUES = [
   "PURCHASE", // mal girişi
   "SALE", // satış
   "RETURN", // müşteri iadesi
   "CANCEL", // iptal iadesi
   "MANUAL", // elle düzeltme
-]);
+] as const;
 
 /* ========================================================================== */
 /*  KULLANICI                                                                 */
 /* ========================================================================== */
 
-export const users = pgTable(
+export const users = mysqlTable(
   "users",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -82,16 +89,16 @@ export const users = pgTable(
     firstName: varchar("first_name", { length: 100 }).notNull(),
     lastName: varchar("last_name", { length: 100 }).notNull(),
     phone: varchar("phone", { length: 25 }),
-    role: roleEnum("role").notNull().default("CUSTOMER"),
+    role: mysqlEnum("role", ROLE_VALUES).notNull().default("CUSTOMER"),
     isActive: boolean("is_active").notNull().default(true),
     acceptsMarketing: boolean("accepts_marketing").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("users_email_uq").on(t.email)],
 );
 
-export const addresses = pgTable(
+export const addresses = mysqlTable(
   "addresses",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -112,7 +119,7 @@ export const addresses = pgTable(
     taxOffice: varchar("tax_office", { length: 120 }),
     taxNumber: varchar("tax_number", { length: 30 }),
     isDefault: boolean("is_default").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [index("addresses_user_idx").on(t.userId)],
 );
@@ -121,7 +128,7 @@ export const addresses = pgTable(
 /*  KATALOG                                                                   */
 /* ========================================================================== */
 
-export const categories = pgTable(
+export const categories = mysqlTable(
   "categories",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -130,12 +137,12 @@ export const categories = pgTable(
     description: text("description"),
     imageUrl: text("image_url"),
     parentId: varchar("parent_id", { length: 30 }),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: int("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     showInMenu: boolean("show_in_menu").notNull().default(true),
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: text("meta_description"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     uniqueIndex("categories_slug_uq").on(t.slug),
@@ -143,7 +150,7 @@ export const categories = pgTable(
   ],
 );
 
-export const brands = pgTable(
+export const brands = mysqlTable(
   "brands",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -154,21 +161,21 @@ export const brands = pgTable(
   (t) => [uniqueIndex("brands_slug_uq").on(t.slug)],
 );
 
-export const products = pgTable(
+export const products = mysqlTable(
   "products",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
     name: varchar("name", { length: 250 }).notNull(),
     slug: varchar("slug", { length: 280 }).notNull(),
     sku: varchar("sku", { length: 60 }).notNull(),
-    description: text("description").notNull().default(""),
+    description: text("description").notNull().$defaultFn(() => ""),
     shortDescription: text("short_description"),
 
     // --- Para alanları: KURUŞ ---
-    price: integer("price").notNull(), // satış fiyatı
-    compareAtPrice: integer("compare_at_price"), // üstü çizili eski fiyat
-    costPrice: integer("cost_price"), // alış maliyeti (sadece admin)
-    taxRate: integer("tax_rate").notNull().default(10), // KDV %
+    price: int("price").notNull(), // satış fiyatı
+    compareAtPrice: int("compare_at_price"), // üstü çizili eski fiyat
+    costPrice: int("cost_price"), // alış maliyeti (sadece admin)
+    taxRate: int("tax_rate").notNull().default(10), // KDV %
 
     brandId: varchar("brand_id", { length: 30 }).references(() => brands.id, {
       onDelete: "set null",
@@ -178,7 +185,7 @@ export const products = pgTable(
     isFeatured: boolean("is_featured").notNull().default(false),
     isNew: boolean("is_new").notNull().default(false),
 
-    weightGr: integer("weight_gr"), // kargo hesabı için gram
+    weightGr: int("weight_gr"), // kargo hesabı için gram
 
     // İç giyime özel alanlar
     material: varchar("material", { length: 250 }), // %95 Pamuk %5 Elastan
@@ -188,11 +195,11 @@ export const products = pgTable(
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: text("meta_description"),
 
-    viewCount: integer("view_count").notNull().default(0),
-    soldCount: integer("sold_count").notNull().default(0),
+    viewCount: int("view_count").notNull().default(0),
+    soldCount: int("sold_count").notNull().default(0),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     uniqueIndex("products_slug_uq").on(t.slug),
@@ -201,7 +208,7 @@ export const products = pgTable(
   ],
 );
 
-export const productCategories = pgTable(
+export const productCategories = mysqlTable(
   "product_categories",
   {
     productId: varchar("product_id", { length: 30 })
@@ -214,7 +221,7 @@ export const productCategories = pgTable(
   (t) => [primaryKey({ columns: [t.productId, t.categoryId] })],
 );
 
-export const productImages = pgTable(
+export const productImages = mysqlTable(
   "product_images",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -223,7 +230,7 @@ export const productImages = pgTable(
       .references(() => products.id, { onDelete: "cascade" }),
     url: text("url").notNull(),
     alt: varchar("alt", { length: 250 }),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: int("sort_order").notNull().default(0),
     colorName: varchar("color_name", { length: 60 }), // bu görsel hangi renge ait
   },
   (t) => [index("product_images_product_idx").on(t.productId)],
@@ -233,7 +240,7 @@ export const productImages = pgTable(
  * Beden + renk kombinasyonu. STOK BURADA TUTULUR.
  * Örn: "Siyah / 75B" -> stock: 12
  */
-export const productVariants = pgTable(
+export const productVariants = mysqlTable(
   "product_variants",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -247,13 +254,13 @@ export const productVariants = pgTable(
     colorName: varchar("color_name", { length: 60 }).notNull(), // Siyah
     colorHex: varchar("color_hex", { length: 9 }).notNull().default("#000000"),
 
-    priceOverride: integer("price_override"), // ürün fiyatından farklıysa
+    priceOverride: int("price_override"), // ürün fiyatından farklıysa
 
-    stock: integer("stock").notNull().default(0),
-    lowStockAlert: integer("low_stock_alert").notNull().default(3),
+    stock: int("stock").notNull().default(0),
+    lowStockAlert: int("low_stock_alert").notNull().default(3),
 
     isActive: boolean("is_active").notNull().default(true),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: int("sort_order").notNull().default(0),
   },
   (t) => [
     uniqueIndex("variants_sku_uq").on(t.sku),
@@ -262,23 +269,23 @@ export const productVariants = pgTable(
   ],
 );
 
-export const stockMovements = pgTable(
+export const stockMovements = mysqlTable(
   "stock_movements",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").primaryKey().autoincrement(),
     variantId: varchar("variant_id", { length: 30 })
       .notNull()
       .references(() => productVariants.id, { onDelete: "cascade" }),
-    type: stockMovementEnum("type").notNull(),
-    quantity: integer("quantity").notNull(), // + giriş / - çıkış
+    type: mysqlEnum("type", STOCK_MOVEMENT_VALUES).notNull(),
+    quantity: int("quantity").notNull(), // + giriş / - çıkış
     note: text("note"),
     orderId: varchar("order_id", { length: 30 }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [index("stock_movements_variant_idx").on(t.variantId)],
 );
 
-export const reviews = pgTable(
+export const reviews = mysqlTable(
   "reviews",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -288,11 +295,11 @@ export const reviews = pgTable(
     userId: varchar("user_id", { length: 30 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    rating: integer("rating").notNull(), // 1-5
+    rating: int("rating").notNull(), // 1-5
     title: varchar("title", { length: 200 }),
     comment: text("comment").notNull(),
     isApproved: boolean("is_approved").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     uniqueIndex("reviews_product_user_uq").on(t.productId, t.userId),
@@ -300,7 +307,7 @@ export const reviews = pgTable(
   ],
 );
 
-export const favorites = pgTable(
+export const favorites = mysqlTable(
   "favorites",
   {
     userId: varchar("user_id", { length: 30 })
@@ -309,7 +316,7 @@ export const favorites = pgTable(
     productId: varchar("product_id", { length: 30 })
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [primaryKey({ columns: [t.userId, t.productId] })],
 );
@@ -318,7 +325,7 @@ export const favorites = pgTable(
 /*  SEPET                                                                     */
 /* ========================================================================== */
 
-export const carts = pgTable(
+export const carts = mysqlTable(
   "carts",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -326,13 +333,13 @@ export const carts = pgTable(
       onDelete: "cascade",
     }),
     token: varchar("token", { length: 60 }).notNull(), // misafir sepeti cookie anahtarı
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("carts_token_uq").on(t.token), index("carts_user_idx").on(t.userId)],
 );
 
-export const cartItems = pgTable(
+export const cartItems = mysqlTable(
   "cart_items",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -342,8 +349,8 @@ export const cartItems = pgTable(
     variantId: varchar("variant_id", { length: 30 })
       .notNull()
       .references(() => productVariants.id, { onDelete: "cascade" }),
-    quantity: integer("quantity").notNull().default(1),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    quantity: int("quantity").notNull().default(1),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("cart_items_uq").on(t.cartId, t.variantId)],
 );
@@ -353,16 +360,20 @@ export const cartItems = pgTable(
 /* ========================================================================== */
 
 /**
- * Sipariş numarası sayacı.
- * Veritabanı seviyesinde artar; aynı anda gelen iki sipariş
- * asla aynı numarayı almaz.
+ * SAYAÇLAR
+ *
+ * MySQL'de PostgreSQL'deki gibi "sequence" nesnesi yoktur. Sipariş numarası
+ * gibi sırayla artması gereken değerler bu tabloda tutulur ve
+ * `UPDATE ... LAST_INSERT_ID(value + 1)` kalıbıyla artırılır. Bu kalıp tek
+ * sorguda hem artırır hem değeri döner, bu yüzden aynı anda gelen iki
+ * sipariş asla aynı numarayı alamaz.
  */
-export const orderNumberSeq = pgSequence("order_number_seq", {
-  startWith: 1,
-  increment: 1,
+export const counters = mysqlTable("counters", {
+  name: varchar("name", { length: 40 }).primaryKey(),
+  value: int("value").notNull().default(0),
 });
 
-export const orders = pgTable(
+export const orders = mysqlTable(
   "orders",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -373,33 +384,33 @@ export const orders = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     phone: varchar("phone", { length: 25 }).notNull(),
 
-    status: orderStatusEnum("status").notNull().default("PENDING"),
-    paymentMethod: paymentMethodEnum("payment_method").notNull(),
-    paymentStatus: paymentStatusEnum("payment_status").notNull().default("PENDING"),
+    status: mysqlEnum("status", ORDER_STATUS_VALUES).notNull().default("PENDING"),
+    paymentMethod: mysqlEnum("payment_method", PAYMENT_METHOD_VALUES).notNull(),
+    paymentStatus: mysqlEnum("payment_status", PAYMENT_STATUS_VALUES).notNull().default("PENDING"),
 
     // --- Tutarlar: KURUŞ ---
-    subtotal: integer("subtotal").notNull(),
-    discountTotal: integer("discount_total").notNull().default(0),
-    shippingTotal: integer("shipping_total").notNull().default(0),
-    grandTotal: integer("grand_total").notNull(),
+    subtotal: int("subtotal").notNull(),
+    discountTotal: int("discount_total").notNull().default(0),
+    shippingTotal: int("shipping_total").notNull().default(0),
+    grandTotal: int("grand_total").notNull(),
 
     couponCode: varchar("coupon_code", { length: 40 }),
-    installment: integer("installment").notNull().default(1),
+    installment: int("installment").notNull().default(1),
 
     // Adresin anlık kopyası — adres sonradan silinse/değişse sipariş bozulmaz
-    shippingAddress: jsonb("shipping_address").notNull(),
-    billingAddress: jsonb("billing_address").notNull(),
+    shippingAddress: json("shipping_address").notNull(),
+    billingAddress: json("billing_address").notNull(),
 
     shippingCompany: varchar("shipping_company", { length: 80 }),
     trackingNumber: varchar("tracking_number", { length: 80 }),
-    shippedAt: timestamp("shipped_at", { withTimezone: true }),
-    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    shippedAt: datetime("shipped_at", { mode: "date" }),
+    deliveredAt: datetime("delivered_at", { mode: "date" }),
 
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     uniqueIndex("orders_number_uq").on(t.orderNumber),
@@ -409,7 +420,7 @@ export const orders = pgTable(
   ],
 );
 
-export const orderItems = pgTable(
+export const orderItems = mysqlTable(
   "order_items",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -427,15 +438,15 @@ export const orderItems = pgTable(
     sku: varchar("sku", { length: 80 }).notNull(),
     imageUrl: text("image_url"),
 
-    unitPrice: integer("unit_price").notNull(), // kuruş
-    quantity: integer("quantity").notNull(),
-    taxRate: integer("tax_rate").notNull().default(10),
-    lineTotal: integer("line_total").notNull(), // kuruş
+    unitPrice: int("unit_price").notNull(), // kuruş
+    quantity: int("quantity").notNull(),
+    taxRate: int("tax_rate").notNull().default(10),
+    lineTotal: int("line_total").notNull(), // kuruş
   },
   (t) => [index("order_items_order_idx").on(t.orderId)],
 );
 
-export const payments = pgTable(
+export const payments = mysqlTable(
   "payments",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -444,23 +455,23 @@ export const payments = pgTable(
       .references(() => orders.id, { onDelete: "cascade" }),
 
     provider: varchar("provider", { length: 40 }).notNull().default("iyzico"),
-    status: paymentStatusEnum("status").notNull().default("PENDING"),
-    amount: integer("amount").notNull(), // kuruş
+    status: mysqlEnum("status", PAYMENT_STATUS_VALUES).notNull().default("PENDING"),
+    amount: int("amount").notNull(), // kuruş
 
     // iyzico alanları
     conversationId: varchar("conversation_id", { length: 60 }),
     iyzicoPaymentId: varchar("iyzico_payment_id", { length: 60 }),
     iyzicoTransactionId: varchar("iyzico_transaction_id", { length: 60 }),
-    installment: integer("installment").notNull().default(1),
+    installment: int("installment").notNull().default(1),
     cardFamily: varchar("card_family", { length: 40 }), // Bonus, World, Axess
     cardAssociation: varchar("card_association", { length: 40 }), // VISA, MASTER_CARD
     lastFourDigits: varchar("last_four_digits", { length: 4 }),
     binNumber: varchar("bin_number", { length: 8 }),
     errorCode: varchar("error_code", { length: 40 }),
     errorMessage: text("error_message"),
-    rawResponse: jsonb("raw_response"),
+    rawResponse: json("raw_response"),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     index("payments_order_idx").on(t.orderId),
@@ -472,21 +483,21 @@ export const payments = pgTable(
 /*  KAMPANYA                                                                  */
 /* ========================================================================== */
 
-export const coupons = pgTable(
+export const coupons = mysqlTable(
   "coupons",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
     code: varchar("code", { length: 40 }).notNull(),
-    type: couponTypeEnum("type").notNull(),
-    value: integer("value").notNull(), // PERCENT: 10 = %10 | FIXED: kuruş
-    minOrderTotal: integer("min_order_total").notNull().default(0), // kuruş
-    maxDiscount: integer("max_discount"), // kuruş — yüzde indirimde üst sınır
-    usageLimit: integer("usage_limit"),
-    usedCount: integer("used_count").notNull().default(0),
-    startsAt: timestamp("starts_at", { withTimezone: true }),
-    endsAt: timestamp("ends_at", { withTimezone: true }),
+    type: mysqlEnum("type", COUPON_TYPE_VALUES).notNull(),
+    value: int("value").notNull(), // PERCENT: 10 = %10 | FIXED: kuruş
+    minOrderTotal: int("min_order_total").notNull().default(0), // kuruş
+    maxDiscount: int("max_discount"), // kuruş — yüzde indirimde üst sınır
+    usageLimit: int("usage_limit"),
+    usedCount: int("used_count").notNull().default(0),
+    startsAt: datetime("starts_at", { mode: "date" }),
+    endsAt: datetime("ends_at", { mode: "date" }),
     isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("coupons_code_uq").on(t.code)],
 );
@@ -496,25 +507,249 @@ export const coupons = pgTable(
 /* ========================================================================== */
 
 /** key/value ayar tablosu: kargo ücreti, ücretsiz kargo limiti, iletişim vb. */
-export const settings = pgTable("settings", {
+export const settings = mysqlTable("settings", {
   key: varchar("key", { length: 80 }).primaryKey(),
   value: text("value").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const banners = pgTable("banners", {
-  id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
-  title: varchar("title", { length: 200 }),
-  subtitle: varchar("subtitle", { length: 250 }),
-  imageUrl: text("image_url").notNull(),
-  linkUrl: text("link_url"),
-  buttonLabel: varchar("button_label", { length: 60 }),
-  position: varchar("position", { length: 40 }).notNull().default("home_hero"),
-  sortOrder: integer("sort_order").notNull().default(0),
-  isActive: boolean("is_active").notNull().default(true),
+/**
+ * BANNER / SLAYT
+ * Ana sayfa carousel'i ve diğer tanıtım alanları buradan beslenir.
+ * Görseller medya kütüphanesinden seçilir; masaüstü ve mobil için ayrı
+ * görsel verilebilir (mobilde dikey kesim daha iyi durur).
+ */
+export const banners = mysqlTable(
+  "banners",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    eyebrow: varchar("eyebrow", { length: 80 }), // başlığın üstündeki küçük yazı
+    title: varchar("title", { length: 200 }),
+    subtitle: varchar("subtitle", { length: 250 }),
+    imageUrl: text("image_url").notNull(),
+    mobileImageUrl: text("mobile_image_url"),
+    imageAlt: varchar("image_alt", { length: 250 }),
+    linkUrl: text("link_url"),
+    buttonLabel: varchar("button_label", { length: 60 }),
+    secondaryLabel: varchar("secondary_label", { length: 60 }),
+    secondaryUrl: text("secondary_url"),
+
+    // Görünüm
+    align: varchar("align", { length: 10 }).notNull().default("left"), // left | center | right
+    theme: varchar("theme", { length: 10 }).notNull().default("light"), // yazı rengi: light | dark
+    overlay: int("overlay").notNull().default(25), // karartma yüzdesi 0-80
+
+    position: varchar("position", { length: 40 }).notNull().default("home_hero"),
+    sortOrder: int("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+
+    // Yayın takvimi (boşsa her zaman yayında)
+    startsAt: datetime("starts_at", { mode: "date" }),
+    endsAt: datetime("ends_at", { mode: "date" }),
+
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("banners_position_idx").on(t.position, t.sortOrder)],
+);
+
+/**
+ * MEDYA KÜTÜPHANESİ
+ * Yüklenen her görsel burada kayıtlıdır; banner, kategori ve ürünlerde
+ * tekrar tekrar seçilebilir.
+ *
+ * DEPOLAMA: Yönetilen hosting paketlerinde (Hostinger Web Apps, Vercel vb.)
+ * sunucunun dosya sistemi her dağıtımda sıfırlanır. Bu yüzden görsel
+ * verisi varsayılan olarak VERİTABANINDA (`data` sütunu) saklanır ve
+ * /api/gorsel/<id> adresinden sunulur. Yerel geliştirmede dosya sistemi
+ * sürücüsü de kullanılabilir — bkz. src/lib/storage.ts
+ */
+export const mediaAssets = mysqlTable(
+  "media_assets",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    url: text("url").notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    sizeBytes: int("size_bytes").notNull().default(0),
+    width: int("width"),
+    height: int("height"),
+    alt: varchar("alt", { length: 250 }),
+    folder: varchar("folder", { length: 60 }).notNull().default("genel"),
+    uploadedBy: varchar("uploaded_by", { length: 30 }),
+    /** "db" (veritabanı) | "file" (public/uploads) | "remote" (dış adres) */
+    storage: varchar("storage", { length: 10 }).notNull().default("db"),
+    /** storage = "db" ise görselin ham baytları burada durur */
+    data: binaryColumn("data"),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("media_folder_idx").on(t.folder), index("media_created_idx").on(t.createdAt)],
+);
+
+/**
+ * ANA SAYFA BÖLÜMLERİ
+ * Ana sayfada görünen her blok burada bir satırdır. Sırası değiştirilebilir,
+ * kapatılabilir, ayarları `config` içinde JSON olarak tutulur.
+ */
+export const homeSections = mysqlTable(
+  "home_sections",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    type: varchar("type", { length: 40 }).notNull(), // hero | categories | products | usp | promo | newsletter | richtext
+    title: varchar("title", { length: 200 }),
+    subtitle: varchar("subtitle", { length: 250 }),
+    config: json("config"),
+    sortOrder: int("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("home_sections_sort_idx").on(t.sortOrder)],
+);
+
+/* ========================================================================== */
+/*  GÜVENLİK                                                                  */
+/* ========================================================================== */
+
+/**
+ * OTURUMLAR
+ * Çerezdeki JWT tek başına yeterli değildir: her istekte buradaki kayıt da
+ * kontrol edilir. Böylece bir oturum anında iptal edilebilir (çalınan cihaz,
+ * şifre değişimi, "tüm cihazlardan çıkış").
+ * Token'ın kendisi değil, SHA-256 özeti saklanır.
+ */
+export const sessions = mysqlTable(
+  "sessions",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    userId: varchar("user_id", { length: 30 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    userAgent: varchar("user_agent", { length: 400 }),
+    ip: varchar("ip", { length: 60 }),
+    /** Admin oturumu 2FA ile doğrulandı mı? */
+    twoFactorAt: datetime("two_factor_at", { mode: "date" }),
+    lastSeenAt: datetime("last_seen_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    expiresAt: datetime("expires_at", { mode: "date" }).notNull(),
+    revokedAt: datetime("revoked_at", { mode: "date" }),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    uniqueIndex("sessions_token_uq").on(t.tokenHash),
+    index("sessions_user_idx").on(t.userId),
+    index("sessions_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/**
+ * GİRİŞ DENEMELERİ
+ * Hem e-posta hem IP bazlı sayaç için ham kayıt. Eski kayıtlar periyodik
+ * olarak silinir.
+ */
+export const loginAttempts = mysqlTable(
+  "login_attempts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    /** "email:ayse@x.com" veya "ip:1.2.3.4" */
+    identifier: varchar("identifier", { length: 120 }).notNull(),
+    success: boolean("success").notNull().default(false),
+    ip: varchar("ip", { length: 60 }),
+    userAgent: varchar("user_agent", { length: 400 }),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("login_attempts_idx").on(t.identifier, t.createdAt)],
+);
+
+/**
+ * HESAP GÜVENLİK DURUMU
+ * Ardışık hatalı deneme sayısı ve geçici kilit burada tutulur.
+ */
+export const userSecurity = mysqlTable("user_security", {
+  userId: varchar("user_id", { length: 30 })
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  failedCount: int("failed_count").notNull().default(0),
+  lockedUntil: datetime("locked_until", { mode: "date" }),
+  lastLoginAt: datetime("last_login_at", { mode: "date" }),
+  lastLoginIp: varchar("last_login_ip", { length: 60 }),
+  passwordChangedAt: datetime("password_changed_at", { mode: "date" }),
+  /** Admin hesaplarında 2FA zorunludur; müşteri isteğe bağlı açabilir. */
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  /** Tek kullanımlık yedek kodların bcrypt özetleri */
+  backupCodes: json("backup_codes"),
+  updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const pages = pgTable(
+/**
+ * İKİ ADIMLI DOĞRULAMA KODLARI
+ * Kodun kendisi değil bcrypt özeti saklanır; 10 dakika geçerli, tek kullanımlık.
+ */
+export const twoFactorCodes = mysqlTable(
+  "two_factor_codes",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    userId: varchar("user_id", { length: 30 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    purpose: varchar("purpose", { length: 30 }).notNull().default("login"),
+    attempts: int("attempts").notNull().default(0),
+    expiresAt: datetime("expires_at", { mode: "date" }).notNull(),
+    usedAt: datetime("used_at", { mode: "date" }),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("two_factor_user_idx").on(t.userId, t.createdAt)],
+);
+
+/**
+ * GÜVENİLİR CİHAZLAR
+ * "Bu cihazı 30 gün hatırla" seçilirse 2FA tekrar sorulmaz.
+ */
+export const trustedDevices = mysqlTable(
+  "trusted_devices",
+  {
+    id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
+    userId: varchar("user_id", { length: 30 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    label: varchar("label", { length: 160 }),
+    expiresAt: datetime("expires_at", { mode: "date" }).notNull(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    uniqueIndex("trusted_devices_token_uq").on(t.tokenHash),
+    index("trusted_devices_user_idx").on(t.userId),
+  ],
+);
+
+/**
+ * DENETİM KAYDI (AUDIT LOG)
+ * Panelde yapılan her değiştirici işlem buraya yazılır. Silinmez.
+ */
+export const auditLogs = mysqlTable(
+  "audit_logs",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: varchar("user_id", { length: 30 }),
+    actorEmail: varchar("actor_email", { length: 255 }),
+    action: varchar("action", { length: 80 }).notNull(), // product.update, order.status, auth.login ...
+    entity: varchar("entity", { length: 60 }), // product, order, user ...
+    entityId: varchar("entity_id", { length: 60 }),
+    summary: varchar("summary", { length: 400 }),
+    meta: json("meta"),
+    ip: varchar("ip", { length: 60 }),
+    userAgent: varchar("user_agent", { length: 400 }),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("audit_created_idx").on(t.createdAt),
+    index("audit_action_idx").on(t.action),
+    index("audit_user_idx").on(t.userId),
+  ],
+);
+
+export const pages = mysqlTable(
   "pages",
   {
     id: varchar("id", { length: 30 }).primaryKey().$defaultFn(createId),
@@ -522,31 +757,31 @@ export const pages = pgTable(
     title: varchar("title", { length: 200 }).notNull(),
     content: text("content").notNull(),
     isActive: boolean("is_active").notNull().default(true),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("pages_slug_uq").on(t.slug)],
 );
 
-export const newsletterSubscribers = pgTable(
+export const newsletterSubscribers = mysqlTable(
   "newsletter_subscribers",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").primaryKey().autoincrement(),
     email: varchar("email", { length: 255 }).notNull(),
     isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("newsletter_email_uq").on(t.email)],
 );
 
-export const contactMessages = pgTable("contact_messages", {
-  id: serial("id").primaryKey(),
+export const contactMessages = mysqlTable("contact_messages", {
+  id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 150 }).notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 25 }),
   subject: varchar("subject", { length: 200 }).notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 /* ========================================================================== */

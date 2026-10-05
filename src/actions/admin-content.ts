@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  banners,
   categories,
   contactMessages,
   coupons,
@@ -14,6 +13,8 @@ import {
   users,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { assertSameOrigin } from "@/lib/security";
 import { setSettings } from "@/lib/settings";
 import { slugify } from "@/lib/utils";
 import { parsePrice } from "@/lib/money";
@@ -39,7 +40,8 @@ export async function saveCategoryAction(
   _prev: ContentState,
   formData: FormData,
 ): Promise<ContentState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -84,14 +86,19 @@ export async function saveCategoryAction(
     return { ok: false, message: "Kaydedilemedi: " + message.slice(0, 150) };
   }
 
+  await logAudit({ action: id ? "category.update" : "category.create", userId: admin.id,
+    actorEmail: admin.email, entity: "category", entityId: id ?? undefined, summary: values.name });
   revalidatePath("/admin/kategoriler");
   revalidatePath("/", "layout");
   return { ok: true, message: "Kategori kaydedildi." };
 }
 
 export async function deleteCategoryAction(id: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(categories).where(eq(categories.id, id));
+  await logAudit({ action: "category.delete", userId: admin.id, actorEmail: admin.email,
+    entity: "category", entityId: id });
   revalidatePath("/admin/kategoriler");
   revalidatePath("/", "layout");
   return { ok: true };
@@ -115,7 +122,8 @@ export async function saveCouponAction(
   _prev: ContentState,
   formData: FormData,
 ): Promise<ContentState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const parsed = couponSchema.safeParse({
     code: formData.get("code"),
@@ -168,53 +176,19 @@ export async function saveCouponAction(
     return { ok: false, message: "Kaydedilemedi: " + message.slice(0, 150) };
   }
 
+  await logAudit({ action: id ? "coupon.update" : "coupon.create", userId: admin.id,
+    actorEmail: admin.email, entity: "coupon", entityId: id ?? undefined, summary: values.code });
   revalidatePath("/admin/kuponlar");
   return { ok: true, message: "Kupon kaydedildi." };
 }
 
 export async function deleteCouponAction(id: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(coupons).where(eq(coupons.id, id));
+  await logAudit({ action: "coupon.delete", userId: admin.id, actorEmail: admin.email,
+    entity: "coupon", entityId: id });
   revalidatePath("/admin/kuponlar");
-  return { ok: true };
-}
-
-/* ------------------------------ BANNER ---------------------------------- */
-
-export async function saveBannerAction(
-  _prev: ContentState,
-  formData: FormData,
-): Promise<ContentState> {
-  await requireAdmin();
-
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
-  if (!imageUrl) return { ok: false, message: "Banner görseli zorunlu." };
-
-  const values = {
-    title: (formData.get("title") as string)?.trim() || null,
-    subtitle: (formData.get("subtitle") as string)?.trim() || null,
-    imageUrl,
-    linkUrl: (formData.get("linkUrl") as string)?.trim() || null,
-    buttonLabel: (formData.get("buttonLabel") as string)?.trim() || null,
-    position: (formData.get("position") as string) || "home_hero",
-    sortOrder: Number(formData.get("sortOrder") ?? 0),
-    isActive: formData.get("isActive") === "on",
-  };
-
-  const id = (formData.get("id") as string) || null;
-  if (id) await db.update(banners).set(values).where(eq(banners.id, id));
-  else await db.insert(banners).values(values);
-
-  revalidatePath("/admin/bannerlar");
-  revalidatePath("/");
-  return { ok: true, message: "Banner kaydedildi." };
-}
-
-export async function deleteBannerAction(id: string) {
-  await requireAdmin();
-  await db.delete(banners).where(eq(banners.id, id));
-  revalidatePath("/admin/bannerlar");
-  revalidatePath("/");
   return { ok: true };
 }
 
@@ -224,7 +198,8 @@ export async function savePageAction(
   _prev: ContentState,
   formData: FormData,
 ): Promise<ContentState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -253,13 +228,16 @@ export async function savePageAction(
     return { ok: false, message: "Kaydedilemedi: " + message.slice(0, 150) };
   }
 
+  await logAudit({ action: "page.update", userId: admin.id, actorEmail: admin.email,
+    entity: "page", entityId: id ?? undefined, summary: values.title });
   revalidatePath("/admin/sayfalar");
   revalidatePath(`/sayfa/${values.slug}`);
   return { ok: true, message: "Sayfa kaydedildi." };
 }
 
 export async function deletePageAction(id: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/admin/sayfalar");
   return { ok: true };
@@ -268,14 +246,18 @@ export async function deletePageAction(id: string) {
 /* ------------------------------- YORUM ---------------------------------- */
 
 export async function approveReviewAction(id: string, approved: boolean) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.update(reviews).set({ isApproved: approved }).where(eq(reviews.id, id));
+  await logAudit({ action: "review.moderate", userId: admin.id, actorEmail: admin.email,
+    entity: "review", entityId: id, summary: approved ? "Yorum onaylandı" : "Yorum onayı kaldırıldı" });
   revalidatePath("/admin/yorumlar");
   return { ok: true };
 }
 
 export async function deleteReviewAction(id: string) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(reviews).where(eq(reviews.id, id));
   revalidatePath("/admin/yorumlar");
   return { ok: true };
@@ -284,14 +266,16 @@ export async function deleteReviewAction(id: string) {
 /* ------------------------------ MESAJ ----------------------------------- */
 
 export async function markMessageReadAction(id: number, isRead: boolean) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.update(contactMessages).set({ isRead }).where(eq(contactMessages.id, id));
   revalidatePath("/admin/mesajlar");
   return { ok: true };
 }
 
 export async function deleteMessageAction(id: number) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.delete(contactMessages).where(eq(contactMessages.id, id));
   revalidatePath("/admin/mesajlar");
   return { ok: true };
@@ -300,8 +284,11 @@ export async function deleteMessageAction(id: number) {
 /* ------------------------------ MÜŞTERİ --------------------------------- */
 
 export async function toggleCustomerActiveAction(id: string, isActive: boolean) {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
   await db.update(users).set({ isActive }).where(eq(users.id, id));
+  await logAudit({ action: "customer.update", userId: admin.id, actorEmail: admin.email,
+    entity: "user", entityId: id, summary: isActive ? "Hesap açıldı" : "Hesap kapatıldı" });
   revalidatePath("/admin/musteriler");
   return { ok: true };
 }
@@ -314,7 +301,8 @@ export async function saveSettingsAction(
   _prev: ContentState,
   formData: FormData,
 ): Promise<ContentState> {
-  await requireAdmin();
+  await assertSameOrigin();
+  const admin = await requireAdmin();
 
   const entries: Record<string, string> = {};
 
@@ -324,7 +312,7 @@ export async function saveSettingsAction(
 
     if (MONEY_KEYS.includes(key)) {
       entries[key] = String(parsePrice(raw));
-    } else if (key.startsWith("payment_")) {
+    } else if (key.startsWith("payment_") || key === "announce_enabled") {
       entries[key] = raw === "on" ? "1" : "0";
     } else {
       entries[key] = raw;
@@ -332,11 +320,18 @@ export async function saveSettingsAction(
   }
 
   // İşaretlenmeyen checkbox'lar formData'da hiç gelmez; kapalı olarak yaz
-  for (const key of ["payment_credit_card", "payment_bank_transfer", "payment_cod"]) {
+  for (const key of [
+    "payment_credit_card",
+    "payment_bank_transfer",
+    "payment_cod",
+    "announce_enabled",
+  ]) {
     if (!(key in entries)) entries[key] = "0";
   }
 
   await setSettings(entries);
+  await logAudit({ action: "settings.update", userId: admin.id, actorEmail: admin.email,
+    summary: `${Object.keys(entries).length} ayar güncellendi`, meta: { keys: Object.keys(entries) } });
 
   revalidatePath("/admin/ayarlar");
   revalidatePath("/", "layout");

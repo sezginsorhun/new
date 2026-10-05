@@ -1,3 +1,4 @@
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
@@ -45,7 +46,7 @@ export default async function EditProductPage(props: PageProps<"/admin/urunler/[
     <div className="max-w-[980px]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link
-          href="/admin/urunler"
+          href={adminUrl("urunler")}
           className="inline-flex items-center gap-1.5 text-[12.5px] text-[color:var(--color-brand)]"
         >
           <ArrowLeft size={14} strokeWidth={1.5} />

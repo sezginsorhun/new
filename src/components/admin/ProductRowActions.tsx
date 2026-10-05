@@ -1,5 +1,6 @@
 "use client";
 
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -48,7 +49,7 @@ export default function ProductRowActions({
       </button>
 
       <Link
-        href={`/admin/urunler/${id}`}
+        href={adminUrl(`urunler/${id}`)}
         title="Düzenle"
         className="p-1.5 text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)]"
       >

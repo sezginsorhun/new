@@ -1,15 +1,19 @@
 "use client";
 
+import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   FileText,
   Image as ImageIcon,
+  Images,
   LayoutDashboard,
+  LayoutTemplate,
   Mail,
   Package,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Star,
   Tag,
@@ -25,6 +29,9 @@ const ICONS = {
   BarChart3,
   Star,
   ImageIcon,
+  Images,
+  LayoutTemplate,
+  ShieldCheck,
   Mail,
   FileText,
   Settings,
@@ -37,33 +44,41 @@ const GROUPS: {
   {
     title: "Genel",
     items: [
-      { href: "/admin", label: "Panel", icon: "LayoutDashboard" },
-      { href: "/admin/siparisler", label: "Siparişler", icon: "ShoppingCart" },
-      { href: "/admin/musteriler", label: "Müşteriler", icon: "Users" },
+      { href: adminUrl(), label: "Panel", icon: "LayoutDashboard" },
+      { href: adminUrl("siparisler"), label: "Siparişler", icon: "ShoppingCart" },
+      { href: adminUrl("musteriler"), label: "Müşteriler", icon: "Users" },
     ],
   },
   {
     title: "Katalog",
     items: [
-      { href: "/admin/urunler", label: "Ürünler", icon: "Package" },
-      { href: "/admin/kategoriler", label: "Kategoriler", icon: "Tag" },
-      { href: "/admin/stok", label: "Stok Durumu", icon: "BarChart3" },
-      { href: "/admin/yorumlar", label: "Yorumlar", icon: "Star" },
+      { href: adminUrl("urunler"), label: "Ürünler", icon: "Package" },
+      { href: adminUrl("kategoriler"), label: "Kategoriler", icon: "Tag" },
+      { href: adminUrl("stok"), label: "Stok Durumu", icon: "BarChart3" },
+      { href: adminUrl("yorumlar"), label: "Yorumlar", icon: "Star" },
+    ],
+  },
+  {
+    title: "Görünüm",
+    items: [
+      { href: adminUrl("anasayfa"), label: "Ana Sayfa Düzeni", icon: "LayoutTemplate" },
+      { href: adminUrl("bannerlar"), label: "Carousel", icon: "ImageIcon" },
+      { href: adminUrl("medya"), label: "Medya", icon: "Images" },
+      { href: adminUrl("sayfalar"), label: "Sayfalar", icon: "FileText" },
     ],
   },
   {
     title: "Pazarlama",
     items: [
-      { href: "/admin/kuponlar", label: "Kuponlar", icon: "Tag" },
-      { href: "/admin/bannerlar", label: "Bannerlar", icon: "ImageIcon" },
-      { href: "/admin/mesajlar", label: "Mesajlar", icon: "Mail" },
+      { href: adminUrl("kuponlar"), label: "Kuponlar", icon: "Tag" },
+      { href: adminUrl("mesajlar"), label: "Mesajlar", icon: "Mail" },
     ],
   },
   {
-    title: "Site",
+    title: "Sistem",
     items: [
-      { href: "/admin/sayfalar", label: "Sayfalar", icon: "FileText" },
-      { href: "/admin/ayarlar", label: "Ayarlar", icon: "Settings" },
+      { href: adminUrl("ayarlar"), label: "Ayarlar", icon: "Settings" },
+      { href: adminUrl("guvenlik"), label: "Güvenlik", icon: "ShieldCheck" },
     ],
   },
 ];
@@ -80,9 +95,11 @@ export default function AdminNav() {
           </p>
           {group.items.map((item) => {
             const Icon = ICONS[item.icon];
+            // pathname gizli yolu gösterir (/yonetim-xxxx/...), item.href de öyle.
+            const root = adminUrl();
             const active =
-              item.href === "/admin"
-                ? pathname === "/admin"
+              item.href === root
+                ? pathname === root || pathname === `${root}/`
                 : pathname.startsWith(item.href);
             return (
               <Link

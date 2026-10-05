@@ -1,120 +1,113 @@
 import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
-import InstagramIcon from "./InstagramIcon";
-import { getCategoryTree } from "@/lib/catalog";
 import { getSettings } from "@/lib/settings";
-import NewsletterForm from "./NewsletterForm";
+import { parseLinkList } from "@/lib/default-settings";
+import { safeUrl } from "@/lib/security";
+import InstagramIcon from "./InstagramIcon";
 
-const CORPORATE_LINKS = [
-  { href: "/sayfa/hakkimizda", label: "Hakkımızda" },
-  { href: "/sayfa/teslimat-ve-kargo", label: "Teslimat ve Kargo" },
-  { href: "/sayfa/iade-ve-degisim", label: "İade ve Değişim" },
-  { href: "/sayfa/gizlilik-politikasi", label: "Gizlilik ve KVKK" },
-  { href: "/sayfa/mesafeli-satis-sozlesmesi", label: "Mesafeli Satış Sözleşmesi" },
-  { href: "/iletisim", label: "İletişim" },
-];
-
+/**
+ * ALT BİLGİ
+ * Tüm kolonlar, bağlantılar, iletişim bilgileri ve sosyal medya adresleri
+ * yönetim panelindeki Ayarlar ekranından yönetilir.
+ */
 export default async function Footer() {
-  const [tree, settings] = await Promise.all([getCategoryTree(), getSettings()]);
+  const settings = await getSettings();
+
+  const columns = [
+    { title: settings.footer_col1_title, links: parseLinkList(settings.footer_col1_links) },
+    { title: settings.footer_col2_title, links: parseLinkList(settings.footer_col2_links) },
+    { title: settings.footer_col3_title, links: parseLinkList(settings.footer_col3_links) },
+  ].filter((column) => column.links.length > 0);
+
+  const socials = [
+    { url: settings.instagram_url, label: "Instagram" },
+    { url: settings.facebook_url, label: "Facebook" },
+    { url: settings.tiktok_url, label: "TikTok" },
+    { url: settings.youtube_url, label: "YouTube" },
+  ].filter((item) => safeUrl(item.url));
 
   return (
-    <footer className="mt-20 border-t border-[color:var(--color-line)] bg-white">
-      {/* Bülten */}
-      <div className="border-b border-[color:var(--color-line)]">
-        <div className="container-page grid gap-8 py-12 md:grid-cols-2 md:items-center">
-          <div>
-            <p className="eyebrow">Bültene katıl</p>
-            <h2 className="mt-2 text-[24px]">Yeni koleksiyonlardan ilk sen haberdar ol</h2>
-            <p className="mt-2 text-[13px] text-[color:var(--color-ink-soft)]">
-              Kampanyalar ve yeni ürünler için e-posta adresini bırak. Dilediğin an çıkabilirsin.
-            </p>
-          </div>
-          <NewsletterForm />
-        </div>
-      </div>
-
-      {/* Bağlantılar */}
+    <footer className="mt-auto border-t border-[color:var(--color-line)] bg-white">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Marka */}
         <div className="lg:col-span-2">
-          <p className="font-[family-name:var(--font-display)] text-[24px]">{settings.site_name}</p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-[color:var(--color-muted)]">
-            {settings.site_tagline}
+          <p className="text-[21px] font-bold tracking-[-0.03em]">{settings.site_name}</p>
+          <p className="mt-3 max-w-[320px] text-[13px] leading-relaxed text-[color:var(--color-ink-soft)]">
+            {settings.footer_about}
           </p>
-          <div className="mt-6 space-y-2.5 text-[13px] text-[color:var(--color-ink-soft)]">
-            <p className="flex items-start gap-2.5">
-              <MapPin size={15} strokeWidth={1.5} className="mt-0.5 shrink-0" />
-              {settings.contact_address}
-            </p>
-            <p className="flex items-center gap-2.5">
-              <Phone size={15} strokeWidth={1.5} className="shrink-0" />
-              <a href={`tel:${settings.contact_phone.replace(/\s/g, "")}`}>{settings.contact_phone}</a>
-            </p>
-            <p className="flex items-center gap-2.5">
-              <Mail size={15} strokeWidth={1.5} className="shrink-0" />
-              <a href={`mailto:${settings.contact_email}`}>{settings.contact_email}</a>
-            </p>
-          </div>
-          {settings.instagram_url && (
-            <a
-              href={settings.instagram_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-5 inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-[color:var(--color-brand)]"
-            >
-              <InstagramIcon size={16} />
-              Instagram
-            </a>
+
+          {socials.length > 0 && (
+            <div className="mt-5 flex items-center gap-3">
+              {socials.map((social) => (
+                <a
+                  key={social.label}
+                  href={safeUrl(social.url)!}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  aria-label={social.label}
+                  className="flex h-9 w-9 items-center justify-center border border-[color:var(--color-line)] transition-colors hover:border-[color:var(--color-ink)]"
+                >
+                  {social.label === "Instagram" ? (
+                    <InstagramIcon size={16} />
+                  ) : (
+                    <span className="text-[11px] font-semibold">{social.label.slice(0, 2)}</span>
+                  )}
+                </a>
+              ))}
+            </div>
           )}
         </div>
 
-        {tree.slice(0, 2).map((parent) => (
-          <div key={parent.id}>
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink)]">
-              {parent.name}
-            </h3>
-            <ul className="mt-4 space-y-2.5 text-[13px] text-[color:var(--color-ink-soft)]">
-              {parent.children.map((child) => (
-                <li key={child.id}>
-                  <Link href={`/kategori/${child.slug}`} className="transition-colors hover:text-[color:var(--color-brand)]">
-                    {child.name}
+        {/* Bağlantı kolonları */}
+        {columns.map((column) => (
+          <nav key={column.title} aria-label={column.title}>
+            <p className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.14em]">
+              {column.title}
+            </p>
+            <ul className="space-y-2">
+              {column.links.map((link) => (
+                <li key={`${column.title}-${link.label}`}>
+                  <Link
+                    href={safeUrl(link.href) ?? "#"}
+                    className="text-[13px] text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
+                  >
+                    {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
         ))}
+      </div>
 
-        <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink)]">
-            Kurumsal
-          </h3>
-          <ul className="mt-4 space-y-2.5 text-[13px] text-[color:var(--color-ink-soft)]">
-            {CORPORATE_LINKS.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="transition-colors hover:text-[color:var(--color-brand)]">
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {/* İletişim şeridi */}
+      <div className="border-t border-[color:var(--color-line)]">
+        <div className="container-page flex flex-wrap gap-x-7 gap-y-2 py-4 text-[12.5px] text-[color:var(--color-ink-soft)]">
+          {settings.contact_phone && (
+            <a href={`tel:${settings.contact_phone.replace(/\s/g, "")}`} className="flex items-center gap-2">
+              <Phone size={14} strokeWidth={1.6} /> {settings.contact_phone}
+            </a>
+          )}
+          {settings.contact_email && (
+            <a href={`mailto:${settings.contact_email}`} className="flex items-center gap-2">
+              <Mail size={14} strokeWidth={1.6} /> {settings.contact_email}
+            </a>
+          )}
+          {settings.contact_address && (
+            <span className="flex items-center gap-2">
+              <MapPin size={14} strokeWidth={1.6} /> {settings.contact_address}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Alt şerit */}
+      {/* Telif */}
       <div className="border-t border-[color:var(--color-line)]">
-        <div className="container-page flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
-          <p className="text-[12px] text-[color:var(--color-muted)]">
-            © {new Date().getFullYear()} {settings.site_name}. Tüm hakları saklıdır.
+        <div className="container-page flex flex-wrap items-center justify-between gap-3 py-5 text-[11.5px] text-[color:var(--color-muted)]">
+          <p>
+            © {new Date().getFullYear()} {settings.site_name}. {settings.footer_note}
           </p>
-          <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.12em] text-[color:var(--color-muted)]">
-            <span>Güvenli ödeme</span>
-            <span className="rounded border border-[color:var(--color-line-strong)] px-2 py-1 text-[10px] tracking-normal">
-              iyzico
-            </span>
-            <span className="rounded border border-[color:var(--color-line-strong)] px-2 py-1 text-[10px] tracking-normal">
-              3D Secure
-            </span>
-          </div>
+          <p className="font-medium">Güvenli ödeme · iyzico · 3D Secure</p>
         </div>
       </div>
     </footer>

@@ -1,5 +1,6 @@
 "use client";
 
+import { adminUrl } from "@/lib/admin-path";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Product } from "@/db/schema";
@@ -26,7 +27,7 @@ export default function ProductForm({
   // Yeni ürün kaydedilince düzenleme sayfasına geç
   useEffect(() => {
     if (state?.ok && state.id && !product) {
-      router.push(`/admin/urunler/${state.id}`);
+      router.push(adminUrl(`urunler/${state.id}`));
     }
   }, [state, product, router]);
 

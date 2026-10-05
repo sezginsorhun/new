@@ -1,3 +1,4 @@
+import { adminUrl } from "@/lib/admin-path";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,7 +36,7 @@ export default async function AdminOrderDetailPage(
   return (
     <div className="max-w-[1080px]">
       <Link
-        href="/admin/siparisler"
+        href={adminUrl("siparisler")}
         className="mb-4 inline-flex items-center gap-1.5 text-[12.5px] text-[color:var(--color-brand)]"
       >
         <ArrowLeft size={14} strokeWidth={1.5} />

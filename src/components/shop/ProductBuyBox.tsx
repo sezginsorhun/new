@@ -255,7 +255,7 @@ export default function ProductBuyBox({
           <Truck size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-brand)]" />
           <span>
             {formatPrice(freeShippingThreshold)} ve üzeri siparişlerde <strong>kargo ücretsiz</strong>.
-            Saat 15:00'e kadar verilen siparişler aynı gün kargoda.
+            Saat 15:00&apos;e kadar verilen siparişler aynı gün kargoda.
           </span>
         </div>
       </div>

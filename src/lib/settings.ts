@@ -38,8 +38,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
   await db
     .insert(settings)
     .values({ key, value })
-    .onConflictDoUpdate({
-      target: settings.key,
+    .onDuplicateKeyUpdate({
       set: { value, updatedAt: sql`now()` },
     });
 }
