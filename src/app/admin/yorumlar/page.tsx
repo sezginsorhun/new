@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { Star } from "lucide-react";
@@ -8,6 +9,7 @@ import { formatDateTime } from "@/lib/utils";
 import ReviewActions from "@/components/admin/ReviewActions";
 
 export default async function AdminReviewsPage(props: PageProps<"/admin/yorumlar">) {
+  await requirePermission("reviews.moderate");
   const query = await props.searchParams;
   const filter = typeof query.filtre === "string" ? query.filtre : "bekleyen";
 

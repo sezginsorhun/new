@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { and, asc, eq, like, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
@@ -7,6 +8,7 @@ import { productVariants, products } from "@/db/schema";
 import StockRow from "@/components/admin/StockRow";
 
 export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
+  await requirePermission("stock.manage");
   const query = await props.searchParams;
   const term = typeof query.q === "string" ? query.q.trim() : "";
   const filter = typeof query.filtre === "string" ? query.filtre : "";
@@ -44,11 +46,17 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
     .orderBy(asc(productVariants.stock), asc(products.name))
     .limit(300);
 
+  /*
+   * NOT: Burada eskiden `count(*) filter (where ...)` kullanılıyordu.
+   * O sözdizimi PostgreSQL'e özeldir; MySQL desteklemez ve sayfa 500
+   * hatası verir. MySQL'de koşullu sayım `sum(case when ... then 1 else 0 end)`
+   * ile yapılır — her iki veritabanında da çalışan yazım budur.
+   */
   const totals = await db
     .select({
       totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)`,
-      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} = 0)`,
-      lowStock: sql<number>`count(*) filter (where ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAlert})`,
+      outOfStock: sql<number>`sum(case when ${productVariants.stock} = 0 then 1 else 0 end)`,
+      lowStock: sql<number>`sum(case when ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAlert} then 1 else 0 end)`,
     })
     .from(productVariants);
 

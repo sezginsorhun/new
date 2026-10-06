@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
@@ -7,6 +8,7 @@ import { categories } from "@/db/schema";
 import ProductForm from "@/components/admin/ProductForm";
 
 export default async function NewProductPage() {
+  await requirePermission("products.manage");
   const allCategories = await db
     .select()
     .from(categories)

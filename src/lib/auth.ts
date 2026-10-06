@@ -23,6 +23,14 @@ import { and, eq, gt, isNull, desc, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users, sessions, trustedDevices, userSecurity } from "@/db/schema";
 import { getRequestInfo } from "@/lib/request-info";
+import {
+  ROLE_VALUES,
+  canEnterPanel,
+  can,
+  isStaffRole,
+  type Permission,
+  type Role,
+} from "@/lib/permissions";
 import { createId } from "@/lib/id";
 
 export const SESSION_COOKIE = "session";
@@ -61,7 +69,7 @@ export type SessionPayload = {
   sid: string;
   userId: string;
   email: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: Role;
   name: string;
 };
 
@@ -107,11 +115,12 @@ export function passwordProblem(password: string, email?: string): string | null
  * `twoFactorVerified` false ise admin panele giremez (sadece 2FA ekranı).
  */
 export async function createSession(
-  user: { id: string; email: string; role: "CUSTOMER" | "ADMIN"; firstName: string; lastName: string },
+  user: { id: string; email: string; role: Role; firstName: string; lastName: string },
   options?: { twoFactorVerified?: boolean },
 ): Promise<void> {
   const { ip, userAgent } = await getRequestInfo();
-  const maxAge = user.role === "ADMIN" ? ADMIN_MAX_AGE : CUSTOMER_MAX_AGE;
+  // Panele giren her rol kısa ömürlü oturum alır; müşteri daha uzun.
+  const maxAge = isStaffRole(user.role) ? ADMIN_MAX_AGE : CUSTOMER_MAX_AGE;
   const rawToken = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + maxAge * 1000);
 
@@ -164,7 +173,7 @@ export async function readSessionCookie(): Promise<(SessionPayload & { t: string
       sid: String(payload.sid),
       userId: String(payload.userId),
       email: String(payload.email ?? ""),
-      role: payload.role === "ADMIN" ? "ADMIN" : "CUSTOMER",
+      role: ROLE_VALUES.includes(payload.role as Role) ? (payload.role as Role) : "CUSTOMER",
       name: String(payload.name ?? ""),
       t: String(payload.t ?? ""),
     };
@@ -382,16 +391,29 @@ export async function requireUser() {
 export async function requireAdmin() {
   const active = await getActiveSession();
   if (!active) throw new AuthError("UNAUTHORIZED");
-  if (active.user.role !== "ADMIN") throw new AuthError("FORBIDDEN");
+  if (!canEnterPanel(active.user.role)) throw new AuthError("FORBIDDEN");
   if (!active.session.twoFactorAt) throw new AuthError("NEEDS_2FA");
   return active.user;
+}
+
+/**
+ * Belirli bir yetki ister.
+ *
+ * Her yönetim sayfası ve her yönetim eylemi bunu çağırır. Menüde bağlantıyı
+ * gizlemek yeterli DEĞİLDİR — adres elle yazılabilir, asıl karar burada
+ * veritabanındaki role bakılarak verilir.
+ */
+export async function requirePermission(permission: Permission) {
+  const user = await requireAdmin();
+  if (!can(user.role, permission)) throw new AuthError("FORBIDDEN");
+  return user;
 }
 
 /** Admin oturumu mu, 2FA bekliyor mu — durumu birlikte döner. */
 export async function adminSessionState() {
   const active = await getActiveSession();
   if (!active) return { state: "anonymous" as const };
-  if (active.user.role !== "ADMIN") return { state: "not-admin" as const, user: active.user };
+  if (!canEnterPanel(active.user.role)) return { state: "not-admin" as const, user: active.user };
   if (!active.session.twoFactorAt) return { state: "needs-2fa" as const, user: active.user };
   return { state: "ok" as const, user: active.user, session: active.session };
 }

@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { canEnterPanel } from "@/lib/permissions";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -15,7 +16,7 @@ export default async function LoginPage(props: PageProps<"/giris">) {
   const query = await props.searchParams;
   const next = typeof query.next === "string" ? query.next : "";
 
-  if (session) redirect(next || (session.role === "ADMIN" ? adminUrl() : "/hesabim"));
+  if (session) redirect(next || (canEnterPanel(session.role) ? adminUrl() : "/hesabim"));
 
   return (
     <div className="container-page py-16">

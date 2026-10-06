@@ -1,8 +1,10 @@
 import { getSettings } from "@/lib/settings";
+import { requirePermission } from "@/lib/auth";
 import { isIyzicoConfigured } from "@/lib/iyzico";
 import SettingsForm from "@/components/admin/SettingsForm";
 
 export default async function AdminSettingsPage() {
+  await requirePermission("settings.manage");
   const settings = await getSettings();
 
   return (

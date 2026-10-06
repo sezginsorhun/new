@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { ExternalLink } from "lucide-react";
 import { db } from "@/db";
 import { categories } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import { getAllSections, ensureDefaultSections } from "@/lib/home";
 import { adminUrl } from "@/lib/admin-path";
 import HomeSectionManager from "@/components/admin/HomeSectionManager";
@@ -11,7 +11,7 @@ import HomeSectionManager from "@/components/admin/HomeSectionManager";
 export const metadata = { title: "Ana Sayfa Düzeni" };
 
 export default async function AdminHomePage() {
-  await requireAdmin();
+  await requirePermission("content.manage");
   await ensureDefaultSections();
 
   const [sections, categoryRows] = await Promise.all([

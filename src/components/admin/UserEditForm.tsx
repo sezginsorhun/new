@@ -17,6 +17,12 @@ import {
   updateUserAction,
   type AdminAccountState,
 } from "@/actions/admin-account";
+import {
+  ROLE_DESCRIPTIONS,
+  ROLE_LABELS,
+  ROLE_VALUES,
+  type Role,
+} from "@/lib/permissions";
 
 export type EditableUser = {
   id: string;
@@ -24,7 +30,7 @@ export type EditableUser = {
   firstName: string;
   lastName: string;
   phone: string | null;
-  role: "ADMIN" | "CUSTOMER";
+  role: Role;
   isActive: boolean;
 };
 
@@ -108,21 +114,22 @@ export default function UserEditForm({
         <div className="card space-y-3 p-4">
           <h2 className="text-[14px] font-medium">Yetki ve durum</h2>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12.5px] text-[color:var(--color-muted)]">Rol:</span>
-            <span className={user.role === "ADMIN" ? "badge badge-ok" : "badge"}>
-              {user.role === "ADMIN" ? "Yönetici" : "Müşteri"}
-            </span>
-            <button
-              type="button"
-              disabled={rolePending || (isSelf && user.role === "ADMIN")}
-              onClick={() =>
-                runRole(() => setUserRoleAction(user.id, user.role === "ADMIN" ? "CUSTOMER" : "ADMIN"))
-              }
-              className="btn-ghost text-[12.5px]"
+          <div className="space-y-2">
+            <label className="label" htmlFor="u-role">Rol</label>
+            <select
+              id="u-role"
+              className="field"
+              defaultValue={user.role}
+              disabled={rolePending || isSelf}
+              onChange={(event) => runRole(() => setUserRoleAction(user.id, event.target.value as Role))}
             >
-              {user.role === "ADMIN" ? "Müşteriye çevir" : "Yönetici yap"}
-            </button>
+              {ROLE_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {ROLE_LABELS[value]}
+                </option>
+              ))}
+            </select>
+            <p className="help">{ROLE_DESCRIPTIONS[user.role]}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -142,7 +149,7 @@ export default function UserEditForm({
 
           {isSelf && (
             <p className="help">
-              Bu senin hesabın. Kendi yetkini kaldıramaz ve kendi hesabını kapatamazsın —
+              Bu senin hesabın. Kendi rolünü değiştiremez ve kendi hesabını kapatamazsın —
               paneli kendine kapatmanı önleyen bir koruma.
             </p>
           )}

@@ -1,13 +1,13 @@
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaAssets } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import MediaLibrary from "@/components/admin/MediaLibrary";
 
 export const metadata = { title: "Medya" };
 
 export default async function AdminMediaPage() {
-  await requireAdmin();
+  await requirePermission("content.manage");
   // Ham görsel baytları (data sütunu) BİLEREK seçilmiyor — liste hafif kalsın.
   const assets = await db
     .select({

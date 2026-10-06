@@ -22,8 +22,9 @@ import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { sessions, twoFactorCodes, users } from "@/db/schema";
-import { hashPassword, requireAdmin, verifyPassword } from "@/lib/auth";
+import { hashPassword, requireAdmin, requirePermission, verifyPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { ROLE_LABELS, ROLE_VALUES, type Role } from "@/lib/permissions";
 
 export type AdminAccountState = { ok: boolean; message: string } | null;
 
@@ -129,12 +130,12 @@ const profileSchema = z.object({
     .or(z.literal("")),
 });
 
-/** Sistemde kaç aktif yönetici var? */
-async function activeAdminCount(): Promise<number> {
+/** Sistemde kaç aktif süper yönetici var? */
+async function superAdminCount(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)` })
     .from(users)
-    .where(and(eq(users.role, "ADMIN"), eq(users.isActive, true)));
+    .where(and(eq(users.role, "SUPER_ADMIN"), eq(users.isActive, true)));
   return Number(row?.n ?? 0);
 }
 
@@ -143,7 +144,7 @@ export async function updateUserAction(
   _prev: AdminAccountState,
   formData: FormData,
 ): Promise<AdminAccountState> {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("users.manage");
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return { ok: false, message: "Kullanıcı belirtilmedi." };
 
@@ -198,19 +199,25 @@ export async function updateUserAction(
 }
 
 /** Rol değiştirme — kilitlenme korumalı. */
-export async function setUserRoleAction(userId: string, role: "ADMIN" | "CUSTOMER") {
-  const admin = await requireAdmin();
+export async function setUserRoleAction(userId: string, role: Role) {
+  const admin = await requirePermission("users.manage");
 
-  if (userId === admin.id && role !== "ADMIN") {
-    return { ok: false, message: "Kendi yönetici yetkini kaldıramazsın." };
+  if (!ROLE_VALUES.includes(role)) {
+    return { ok: false, message: "Geçersiz rol." };
+  }
+  if (userId === admin.id) {
+    return { ok: false, message: "Kendi rolünü değiştiremezsin." };
   }
 
   const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!target) return { ok: false, message: "Kullanıcı bulunamadı." };
   if (target.role === role) return { ok: true, message: "Rol zaten bu." };
 
-  if (target.role === "ADMIN" && role === "CUSTOMER" && (await activeAdminCount()) <= 1) {
-    return { ok: false, message: "Sistemdeki son yöneticiyi düşüremezsin." };
+  // Son süper yönetici düşürülemez: aksi hâlde kullanıcı ve rol yönetimine
+  // erişebilen kimse kalmaz ve geri dönüş yalnızca veritabanına elle
+  // müdahaleyle mümkün olur.
+  if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN" && (await superAdminCount()) <= 1) {
+    return { ok: false, message: "Sistemdeki son süper yöneticiyi düşüremezsin." };
   }
 
   await db.update(users).set({ role, updatedAt: sql`now()` }).where(eq(users.id, userId));
@@ -225,12 +232,12 @@ export async function setUserRoleAction(userId: string, role: "ADMIN" | "CUSTOME
   });
 
   revalidatePath("/admin/kullanicilar");
-  return { ok: true, message: role === "ADMIN" ? "Yönetici yapıldı." : "Müşteriye çevrildi." };
+  return { ok: true, message: `Rol "${ROLE_LABELS[role]}" olarak değiştirildi.` };
 }
 
 /** Hesabı aç/kapat — kilitlenme korumalı. Kapatılan hesabın oturumları da düşer. */
 export async function setUserActiveAction(userId: string, isActive: boolean) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("users.manage");
 
   if (userId === admin.id && !isActive) {
     return { ok: false, message: "Kendi hesabını kapatamazsın." };
@@ -239,8 +246,8 @@ export async function setUserActiveAction(userId: string, isActive: boolean) {
   const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!target) return { ok: false, message: "Kullanıcı bulunamadı." };
 
-  if (target.role === "ADMIN" && !isActive && (await activeAdminCount()) <= 1) {
-    return { ok: false, message: "Sistemdeki son yöneticinin hesabını kapatamazsın." };
+  if (target.role === "SUPER_ADMIN" && !isActive && (await superAdminCount()) <= 1) {
+    return { ok: false, message: "Sistemdeki son süper yöneticinin hesabını kapatamazsın." };
   }
 
   await db.update(users).set({ isActive, updatedAt: sql`now()` }).where(eq(users.id, userId));
@@ -272,7 +279,7 @@ export async function setUserPasswordAction(
   _prev: AdminAccountState,
   formData: FormData,
 ): Promise<AdminAccountState> {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("users.manage");
   const userId = String(formData.get("userId") ?? "");
   const next = String(formData.get("newPassword") ?? "");
 

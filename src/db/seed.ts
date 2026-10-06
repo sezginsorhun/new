@@ -331,7 +331,7 @@ async function main() {
   await db.insert(users).values([
     {
       email: "admin@alenora.com", passwordHash: adminPass,
-      firstName: "Yönetici", lastName: "Hesabı", role: "ADMIN", phone: "05551112233",
+      firstName: "Yönetici", lastName: "Hesabı", role: "SUPER_ADMIN", phone: "05551112233",
     },
     {
       email: "musteri@ornek.com", passwordHash: customerPass,

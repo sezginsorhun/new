@@ -3,6 +3,7 @@
 import { adminUrl } from "@/lib/admin-path";
 
 import { redirect } from "next/navigation";
+import { canEnterPanel } from "@/lib/permissions";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -199,8 +200,14 @@ export async function loginAction(
   await recordAttempt({ email, ip, userAgent, success: true });
   await registerSuccess(user.id, ip);
 
-  /* --- ADMIN: ikinci adım zorunlu ------------------------------------- */
-  if (user.role === "ADMIN") {
+  /* --- PANELE GİREN HER ROL: ikinci adım zorunlu ----------------------- *
+   *
+   * DİKKAT: burada "role === ADMIN" yazmak bir güvenlik hatasıdır. Roller
+   * çoğaldığında (ürün sorumlusu, sipariş sorumlusu, süper yönetici) o
+   * kontrol sessizce yanlışa düşer ve yeni roller 2FA'sız girer. Bu yüzden
+   * rol ADI değil, "panele girebiliyor mu" sorusu sorulur.
+   */
+  if (canEnterPanel(user.role)) {
     const trusted = await isDeviceTrusted(user.id);
     if (!trusted) {
       await createPendingToken(user.id);
@@ -222,7 +229,7 @@ export async function loginAction(
       action: "auth.login",
       userId: user.id,
       actorEmail: user.email,
-      summary: "Güvenilir cihazdan yönetici girişi",
+      summary: "Güvenilir cihazdan panel girişi",
     });
     redirect(adminUrl());
   }
@@ -266,7 +273,7 @@ export async function verifyTwoFactorAction(
   if (!limit.allowed) return { ok: false, message: limit.message ?? "Çok fazla deneme." };
 
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user || !user.isActive || user.role !== "ADMIN") {
+  if (!user || !user.isActive || !canEnterPanel(user.role)) {
     await clearPendingToken();
     return { ok: false, message: "Doğrulama yapılamadı. Baştan giriş yap." };
   }

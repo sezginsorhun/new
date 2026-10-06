@@ -3,14 +3,14 @@ import { asc } from "drizzle-orm";
 import { ExternalLink } from "lucide-react";
 import { db } from "@/db";
 import { banners } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import { adminUrl } from "@/lib/admin-path";
 import SlideManager from "@/components/admin/SlideManager";
 
 export const metadata = { title: "Carousel" };
 
 export default async function AdminBannersPage() {
-  await requireAdmin();
+  await requirePermission("content.manage");
   const slides = await db.select().from(banners).orderBy(asc(banners.sortOrder));
 
   return (

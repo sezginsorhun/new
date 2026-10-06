@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { ShieldCheck, ShieldAlert, KeyRound, Monitor } from "lucide-react";
 import { db } from "@/db";
 import { loginAttempts, sessions, users, userSecurity } from "@/db/schema";
-import { requireAdmin, getActiveSession } from "@/lib/auth";
+import { requireAdmin, getActiveSession, requirePermission } from "@/lib/auth";
 import { listAuditLogs, AUDIT_LABELS } from "@/lib/audit";
 import { describeDevice } from "@/lib/request-info";
 import { ADMIN_PATH } from "@/lib/admin-path";
@@ -17,7 +17,7 @@ function formatDate(value: Date | null): string {
 }
 
 export default async function AdminSecurityPage() {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("security.view");
   const active = await getActiveSession();
 
   const [logs, mySessions, failedCount, lockedUsers, security] = await Promise.all([

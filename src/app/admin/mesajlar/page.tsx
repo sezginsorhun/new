@@ -1,10 +1,12 @@
 import { desc } from "drizzle-orm";
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/db";
 import { contactMessages } from "@/db/schema";
 import { formatDateTime } from "@/lib/utils";
 import MessageActions from "@/components/admin/MessageActions";
 
 export default async function AdminMessagesPage() {
+  await requirePermission("messages.manage");
   const rows = await db
     .select()
     .from(contactMessages)

@@ -1,9 +1,11 @@
 import { asc } from "drizzle-orm";
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/db";
 import { pages } from "@/db/schema";
 import PageManager from "@/components/admin/PageManager";
 
 export default async function AdminPagesPage() {
+  await requirePermission("content.manage");
   const rows = await db.select().from(pages).orderBy(asc(pages.title));
 
   return (

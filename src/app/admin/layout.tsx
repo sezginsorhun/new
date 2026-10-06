@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { adminSessionState } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/permissions";
 import { logoutAction } from "@/actions/auth";
 import AdminNav from "@/components/admin/AdminNav";
 
@@ -55,11 +56,14 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
         </div>
 
-        <AdminNav />
+        <AdminNav role={user.role} />
 
         <div className="border-t border-[color:var(--color-line)] p-3">
-          <p className="mb-2 px-2 text-[11px] text-[color:var(--color-muted)]">
+          <p className="px-2 text-[11px] text-[color:var(--color-muted)]">
             {user.firstName} {user.lastName}
+          </p>
+          <p className="mb-2 px-2 text-[10.5px] text-[color:var(--color-muted)]">
+            {ROLE_LABELS[user.role]}
           </p>
           <Link href="/" className="btn-ghost w-full justify-start">
             Siteyi görüntüle →

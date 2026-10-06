@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,6 +19,7 @@ import OrderControls from "@/components/admin/OrderControls";
 export default async function AdminOrderDetailPage(
   props: PageProps<"/admin/siparisler/[id]">,
 ) {
+  await requirePermission("orders.view");
   const { id } = await props.params;
 
   const rows = await db.select().from(orders).where(eq(orders.id, id)).limit(1);

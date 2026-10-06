@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { adminUrl } from "@/lib/admin-path";
 import { db } from "@/db";
 import { orders, users } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import { formatPrice } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import UserEditForm from "@/components/admin/UserEditForm";
@@ -13,7 +13,7 @@ import UserEditForm from "@/components/admin/UserEditForm";
 export const metadata = { title: "Kullanıcı" };
 
 export default async function AdminUserDetailPage(props: PageProps<"/admin/kullanicilar/[id]">) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("users.manage");
   const { id } = await props.params;
 
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);

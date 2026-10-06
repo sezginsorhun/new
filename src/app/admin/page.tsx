@@ -19,11 +19,25 @@ import {
   users,
 } from "@/db/schema";
 import { formatPrice } from "@/lib/money";
+import { requirePermission } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, formatDateTime } from "@/lib/utils";
 
 const PAID_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] as const;
 
 export default async function AdminDashboard() {
+  /*
+   * Panel özeti role göre daralır. Ürün sorumlusunun ciroyu, müşteri
+   * sayısını veya sipariş listesini görmesi gerekmez — bu bilgiler onun
+   * işini kolaylaştırmaz, yalnızca bir hesap ele geçirildiğinde kaybı
+   * büyütür.
+   */
+  const viewer = await requirePermission("dashboard.view");
+  const seesOrders = can(viewer.role, "orders.view");
+  const seesStock = can(viewer.role, "stock.manage");
+  const seesReviews = can(viewer.role, "reviews.moderate");
+  const seesMessages = can(viewer.role, "messages.manage");
+
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -120,7 +134,7 @@ export default async function AdminDashboard() {
 
   const maxDaily = Math.max(...dailySeries.map((d) => d.total), 1);
 
-  const stats = [
+  const allStats = [
     {
       label: "Bugünkü ciro",
       value: formatPrice(todayRows[0]?.total ?? 0),
@@ -147,14 +161,27 @@ export default async function AdminDashboard() {
     },
   ];
 
+  // Ciro, sipariş ve müşteri sayıları yalnızca siparişleri görebilenlere.
+  const stats = seesOrders
+    ? allStats
+    : [
+        {
+          label: "Ürün",
+          value: String(productRows[0]?.count ?? 0),
+          sub: "yayındaki ürün sayısı",
+          icon: Package,
+        },
+      ];
+
   return (
     <div>
       <h1 className="mb-6 text-[26px]">Panel</h1>
 
       {/* Bildirimler */}
-      {((pendingReviews[0]?.count ?? 0) > 0 || (unreadMessages[0]?.count ?? 0) > 0) && (
+      {((seesReviews && (pendingReviews[0]?.count ?? 0) > 0) ||
+        (seesMessages && (unreadMessages[0]?.count ?? 0) > 0)) && (
         <div className="mb-6 flex flex-wrap gap-2">
-          {(pendingReviews[0]?.count ?? 0) > 0 && (
+          {seesReviews && (pendingReviews[0]?.count ?? 0) > 0 && (
             <Link
               href={adminUrl("yorumlar")}
               className="flex items-center gap-2 border border-[color:var(--color-brand)] bg-[color:var(--color-brand-soft)] px-3.5 py-2 text-[12.5px]"
@@ -163,7 +190,7 @@ export default async function AdminDashboard() {
               <ArrowRight size={13} strokeWidth={1.5} />
             </Link>
           )}
-          {(unreadMessages[0]?.count ?? 0) > 0 && (
+          {seesMessages && (unreadMessages[0]?.count ?? 0) > 0 && (
             <Link
               href={adminUrl("mesajlar")}
               className="flex items-center gap-2 border border-[color:var(--color-brand)] bg-[color:var(--color-brand-soft)] px-3.5 py-2 text-[12.5px]"
@@ -191,7 +218,8 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      {/* Son 30 gün grafiği */}
+      {/* Son 30 gün grafiği — ciro bilgisi, yalnızca sipariş yetkisi olanlara */}
+      {seesOrders && (
       <section className="card mt-6 p-5">
         <h2 className="text-[15px] font-semibold">Son 30 gün cirosu</h2>
         {dailySeries.length === 0 ? (
@@ -214,9 +242,11 @@ export default async function AdminDashboard() {
           </div>
         )}
       </section>
+      )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         {/* Son siparişler */}
+        {seesOrders && (
         <section className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-[color:var(--color-line)] px-5 py-3.5">
             <h2 className="text-[15px] font-semibold">Son Siparişler</h2>
@@ -271,8 +301,10 @@ export default async function AdminDashboard() {
             </div>
           )}
         </section>
+        )}
 
         {/* Kritik stok */}
+        {seesStock && (
         <section className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-[color:var(--color-line)] px-5 py-3.5">
             <h2 className="flex items-center gap-2 text-[15px] font-semibold">
@@ -329,6 +361,7 @@ export default async function AdminDashboard() {
             </div>
           )}
         </section>
+        )}
       </div>
 
       {/* En çok satanlar */}

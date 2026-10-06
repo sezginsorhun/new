@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
@@ -16,6 +17,7 @@ import ProductImages from "@/components/admin/ProductImages";
 import ProductVariants from "@/components/admin/ProductVariants";
 
 export default async function EditProductPage(props: PageProps<"/admin/urunler/[id]">) {
+  await requirePermission("products.manage");
   const { id } = await props.params;
 
   const rows = await db.select().from(products).where(eq(products.id, id)).limit(1);

@@ -36,7 +36,12 @@ const binaryColumn = customType<{ data: Buffer; driverData: Buffer }>({
 /*  ENUM'LAR                                                                  */
 /* ========================================================================== */
 
-export const ROLE_VALUES = ["CUSTOMER", "ADMIN"] as const;
+/**
+ * Roller tek bir yerde tanımlıdır: src/lib/permissions.ts
+ * Şema oradan okur ki rol listesi ile yetki haritası birbirinden kopmasın.
+ */
+export { ROLE_VALUES } from "@/lib/permissions";
+import { ROLE_VALUES as ROLE_VALUES_FOR_ENUM } from "@/lib/permissions";
 
 export const ORDER_STATUS_VALUES = [
   "PENDING", // ödeme bekleniyor
@@ -89,7 +94,7 @@ export const users = mysqlTable(
     firstName: varchar("first_name", { length: 100 }).notNull(),
     lastName: varchar("last_name", { length: 100 }).notNull(),
     phone: varchar("phone", { length: 25 }),
-    role: mysqlEnum("role", ROLE_VALUES).notNull().default("CUSTOMER"),
+    role: mysqlEnum("role", ROLE_VALUES_FOR_ENUM).notNull().default("CUSTOMER"),
     isActive: boolean("is_active").notNull().default(true),
     acceptsMarketing: boolean("accepts_marketing").notNull().default(false),
     createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),

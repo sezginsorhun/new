@@ -1,9 +1,11 @@
 import { desc } from "drizzle-orm";
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/db";
 import { coupons } from "@/db/schema";
 import CouponManager from "@/components/admin/CouponManager";
 
 export default async function AdminCouponsPage() {
+  await requirePermission("coupons.manage");
   const rows = await db.select().from(coupons).orderBy(desc(coupons.createdAt));
 
   return (

@@ -12,18 +12,19 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { Search, ShieldCheck, User } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
+import { ROLE_LABELS, ROLE_VALUES, isStaffRole, type Role } from "@/lib/permissions";
 
 export const metadata = { title: "Kullanıcılar" };
 
 const PER_PAGE = 30;
 
 export default async function AdminUsersPage(props: PageProps<"/admin/kullanicilar">) {
-  await requireAdmin();
+  await requirePermission("users.manage");
   const query = await props.searchParams;
   const term = typeof query.q === "string" ? query.q.trim() : "";
-  const roleFilter = query.rol === "ADMIN" || query.rol === "CUSTOMER" ? query.rol : null;
+  const roleFilter = ROLE_VALUES.includes(query.rol as Role) ? (query.rol as Role) : null;
   const page = Math.max(Number(query.sayfa ?? 1) || 1, 1);
 
   const filters = [];
@@ -95,12 +96,15 @@ export default async function AdminUsersPage(props: PageProps<"/admin/kullanicil
           <Link href={linkWith({ rol: undefined, sayfa: undefined })} className={roleFilter ? "btn-ghost text-[12.5px]" : "btn-primary text-[12.5px]"}>
             Tümü
           </Link>
-          <Link href={linkWith({ rol: "ADMIN", sayfa: undefined })} className={roleFilter === "ADMIN" ? "btn-primary text-[12.5px]" : "btn-ghost text-[12.5px]"}>
-            Yöneticiler
-          </Link>
-          <Link href={linkWith({ rol: "CUSTOMER", sayfa: undefined })} className={roleFilter === "CUSTOMER" ? "btn-primary text-[12.5px]" : "btn-ghost text-[12.5px]"}>
-            Müşteriler
-          </Link>
+          {ROLE_VALUES.map((value) => (
+            <Link
+              key={value}
+              href={linkWith({ rol: value, sayfa: undefined })}
+              className={roleFilter === value ? "btn-primary text-[12.5px]" : "btn-ghost text-[12.5px]"}
+            >
+              {ROLE_LABELS[value]}
+            </Link>
+          ))}
         </div>
       </div>
 
@@ -122,7 +126,7 @@ export default async function AdminUsersPage(props: PageProps<"/admin/kullanicil
               <tr key={row.id}>
                 <td className="font-medium">
                   <span className="inline-flex items-center gap-1.5">
-                    {row.role === "ADMIN" ? (
+                    {isStaffRole(row.role) ? (
                       <ShieldCheck size={14} strokeWidth={1.7} className="text-[color:var(--color-accent)]" />
                     ) : (
                       <User size={14} strokeWidth={1.7} className="text-[color:var(--color-muted)]" />
@@ -133,8 +137,8 @@ export default async function AdminUsersPage(props: PageProps<"/admin/kullanicil
                 <td className="break-all">{row.email}</td>
                 <td>{row.phone ?? "—"}</td>
                 <td>
-                  <span className={row.role === "ADMIN" ? "badge badge-ok" : "badge"}>
-                    {row.role === "ADMIN" ? "Yönetici" : "Müşteri"}
+                  <span className={isStaffRole(row.role) ? "badge badge-ok" : "badge"}>
+                    {ROLE_LABELS[row.role]}
                   </span>
                 </td>
                 <td>

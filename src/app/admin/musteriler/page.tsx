@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import { and, desc, eq, like, inArray, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import CustomerActions from "@/components/admin/CustomerActions";
 const PER_PAGE = 30;
 
 export default async function AdminCustomersPage(props: PageProps<"/admin/musteriler">) {
+  await requirePermission("customers.view");
   const query = await props.searchParams;
   const term = typeof query.q === "string" ? query.q.trim() : "";
   const page = Math.max(Number(query.sayfa ?? 1) || 1, 1);

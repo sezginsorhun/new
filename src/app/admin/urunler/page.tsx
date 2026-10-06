@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
@@ -11,6 +12,7 @@ import ProductRowActions from "@/components/admin/ProductRowActions";
 const PER_PAGE = 20;
 
 export default async function AdminProductsPage(props: PageProps<"/admin/urunler">) {
+  await requirePermission("products.manage");
   const query = await props.searchParams;
   const term = typeof query.q === "string" ? query.q.trim() : "";
   const categorySlug = typeof query.kategori === "string" ? query.kategori : "";

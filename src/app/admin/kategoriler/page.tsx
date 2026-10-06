@@ -1,9 +1,11 @@
 import { asc, eq, sql } from "drizzle-orm";
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/db";
 import { categories, productCategories } from "@/db/schema";
 import CategoryManager from "@/components/admin/CategoryManager";
 
 export default async function AdminCategoriesPage() {
+  await requirePermission("categories.manage");
   const [rows, counts] = await Promise.all([
     db.select().from(categories).orderBy(asc(categories.sortOrder), asc(categories.name)),
     db

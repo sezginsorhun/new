@@ -1,4 +1,5 @@
 import { adminUrl } from "@/lib/admin-path";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
@@ -27,6 +28,7 @@ const STATUS_TABS = [
 ];
 
 export default async function AdminOrdersPage(props: PageProps<"/admin/siparisler">) {
+  await requirePermission("orders.view");
   const query = await props.searchParams;
   const term = typeof query.q === "string" ? query.q.trim() : "";
   const status = typeof query.durum === "string" ? query.durum : "";

@@ -19,6 +19,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { ADMIN_PATH, isAdminPath, toInternalAdminPath } from "@/lib/admin-path";
 import { clientIpFromHeaders, isAllowedAdminIp } from "@/lib/ip-allowlist";
+import { canEnterPanel } from "@/lib/permissions";
 
 const PROTECTED_CUSTOMER = ["/hesabim"];
 
@@ -103,8 +104,11 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (session.role !== "ADMIN") {
-      // Yetkisi olmayan, giriş yapmış kullanıcıya da panel yokmuş gibi görünür.
+    if (!canEnterPanel(session.role)) {
+      // Panelde yapacak işi olmayan (müşteri) bir kullanıcıya panel yokmuş
+      // gibi görünür. Hangi SAYFAYA girebileceği burada DEĞİL, sayfanın
+      // kendi requirePermission() çağrısında belirlenir — proxy yalnızca
+      // "bu kişinin panelde hiç işi var mı" sorusunu yanıtlar.
       return notFound(request);
     }
 
