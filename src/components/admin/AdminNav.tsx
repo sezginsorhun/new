@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Star,
   Tag,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ const ICONS = {
   Mail,
   FileText,
   Settings,
+  UserCog,
 } as const;
 
 const GROUPS: {
@@ -47,6 +49,7 @@ const GROUPS: {
       { href: adminUrl(), label: "Panel", icon: "LayoutDashboard" },
       { href: adminUrl("siparisler"), label: "Siparişler", icon: "ShoppingCart" },
       { href: adminUrl("musteriler"), label: "Müşteriler", icon: "Users" },
+      { href: adminUrl("kullanicilar"), label: "Kullanıcılar", icon: "UserCog" },
     ],
   },
   {
@@ -77,6 +80,7 @@ const GROUPS: {
   {
     title: "Sistem",
     items: [
+      { href: adminUrl("hesabim"), label: "Hesabım", icon: "UserCog" },
       { href: adminUrl("ayarlar"), label: "Ayarlar", icon: "Settings" },
       { href: adminUrl("guvenlik"), label: "Güvenlik", icon: "ShieldCheck" },
     ],

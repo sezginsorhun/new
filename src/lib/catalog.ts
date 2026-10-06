@@ -4,8 +4,11 @@
  */
 
 import "server-only";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { and, asc, desc, eq, gte, like, inArray, lte, or, sql, SQL } from "drizzle-orm";
 import { db } from "@/db";
+import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache-tags";
 import {
   categories,
   productCategories,
@@ -42,8 +45,13 @@ export type CategoryNode = {
 
 /* ------------------------------ KATEGORİLER ----------------------------- */
 
-/** Menü için iki seviyeli kategori ağacı */
-export async function getCategoryTree(): Promise<CategoryNode[]> {
+/**
+ * Menü için iki seviyeli kategori ağacı.
+ * Her sayfada header, footer ve filtre panelinde isteniyor; kategoriler
+ * ise neredeyse hiç değişmiyor. Bu yüzden hem istek içinde tekilleştirilir
+ * hem de kısa süre önbellekte tutulur.
+ */
+async function readCategoryTree(): Promise<CategoryNode[]> {
   const rows = await db
     .select()
     .from(categories)
@@ -72,6 +80,13 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
   }
   return roots;
 }
+
+export const getCategoryTree = cache(
+  unstable_cache(readCategoryTree, ["kategori-agaci"], {
+    revalidate: CACHE_TTL,
+    tags: [CACHE_TAGS.catalog],
+  }),
+);
 
 export async function getCategoryBySlug(slug: string) {
   const rows = await db
@@ -497,8 +512,8 @@ export async function getFilterOptions(categorySlug?: string) {
  * geçmiş olanlar listelenmez — panelden tarih vererek kampanya slaytı
  * önceden hazırlanabilir.
  */
-export async function getBanners(position = "home_hero") {
-  return db
+const readBanners = unstable_cache(
+  async (position: string) => db
     .select()
     .from(banners)
     .where(
@@ -509,8 +524,13 @@ export async function getBanners(position = "home_hero") {
         sql`(${banners.endsAt} is null or ${banners.endsAt} >= now())`,
       ),
     )
-    .orderBy(asc(banners.sortOrder));
-}
+    .orderBy(asc(banners.sortOrder)),
+  ["carousel-slaytlari"],
+  { revalidate: CACHE_TTL, tags: [CACHE_TAGS.home] },
+);
+
+/** Carousel slaytları — panelden değişince etiket geçersiz kılınır. */
+export const getBanners = cache((position = "home_hero") => readBanners(position));
 
 /** En çok satanlar */
 export async function getBestsellerProducts(limit = 8) {

@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/settings";
 import { parseLinkList } from "@/lib/default-settings";
 import { safeUrl } from "@/lib/security";
 import InstagramIcon from "./InstagramIcon";
+import ConsentResetLink from "./ConsentResetLink";
 
 /**
  * ALT BİLGİ
@@ -107,7 +108,13 @@ export default async function Footer() {
           <p>
             © {new Date().getFullYear()} {settings.site_name}. {settings.footer_note}
           </p>
-          <p className="font-medium">Güvenli ödeme · iyzico · 3D Secure</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <ConsentResetLink />
+            <Link href="/sayfa/gizlilik-politikasi" className="link-underline">
+              KVKK Aydınlatma Metni
+            </Link>
+            <span className="font-medium">Güvenli ödeme · iyzico · 3D Secure</span>
+          </div>
         </div>
       </div>
     </footer>

@@ -7,6 +7,7 @@ import { listAuditLogs, AUDIT_LABELS } from "@/lib/audit";
 import { describeDevice } from "@/lib/request-info";
 import { ADMIN_PATH } from "@/lib/admin-path";
 import SessionList from "@/components/admin/SessionList";
+import AccountEmailForm from "@/components/admin/AccountEmailForm";
 
 export const metadata = { title: "Güvenlik" };
 
@@ -124,6 +125,17 @@ export default async function AdminSecurityPage() {
           </div>
         </section>
       )}
+
+      {/* Hesap e-postası */}
+      <section>
+        <h2 className="mb-3 text-[17px]">Hesap ayarların</h2>
+        <p className="mb-3 text-[12.5px] text-[color:var(--color-muted)]">
+          Şifreni değiştirmek için <strong>Hesabım → Şifre</strong> ekranını kullan.
+        </p>
+        <div className="max-w-md">
+          <AccountEmailForm currentEmail={admin.email} />
+        </div>
+      </section>
 
       {/* Oturumlar */}
       <section>

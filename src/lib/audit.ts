@@ -24,6 +24,7 @@ export type AuditAction =
   | "auth.locked"
   | "auth.session_revoked"
   | "auth.password_changed"
+  | "auth.email_changed"
   | "product.create"
   | "product.update"
   | "product.delete"
@@ -113,6 +114,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "auth.locked": "Hesap geçici kilitlendi",
   "auth.session_revoked": "Oturum sonlandırıldı",
   "auth.password_changed": "Şifre değiştirildi",
+  "auth.email_changed": "Giriş e-postası değiştirildi",
   "product.create": "Ürün oluşturuldu",
   "product.update": "Ürün güncellendi",
   "product.delete": "Ürün silindi",

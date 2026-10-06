@@ -6,7 +6,8 @@
  * Her işlem requireAdmin() ile korunur ve denetim kaydına yazılır.
  */
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -23,6 +24,9 @@ function refreshStorefront() {
   revalidatePath("/", "layout");
   revalidatePath("/admin/anasayfa");
   revalidatePath("/admin/bannerlar");
+  // Ana sayfa bölümleri ve carousel slaytları önbellekli; panelden
+  // değişiklik yapılır yapılmaz vitrinde görünsün.
+  updateTag(CACHE_TAGS.home);
 }
 
 /* ========================================================================== */

@@ -18,6 +18,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { ADMIN_PATH, isAdminPath, toInternalAdminPath } from "@/lib/admin-path";
+import { clientIpFromHeaders, isAllowedAdminIp } from "@/lib/ip-allowlist";
 
 const PROTECTED_CUSTOMER = ["/hesabim"];
 
@@ -83,6 +84,18 @@ export async function proxy(request: NextRequest) {
 
   /* 2) Gizli yol → içeride /admin ---------------------------------------- */
   if (isAdminPath(pathname)) {
+    /*
+     * IP kısıtı — kimlik kontrolünden ÖNCE.
+     * İzinli olmayan bir adresten gelen istek, doğru şifreyi bilse bile
+     * giriş ekranını hiç görmez: panel yokmuş gibi 404 alır. Böylece
+     * gizli adres sızsa bile dışarıdan deneme yapılamaz.
+     * Liste boşsa bu blok hiçbir şey yapmaz (bkz. lib/ip-allowlist.ts).
+     */
+    const ip = clientIpFromHeaders((name) => request.headers.get(name));
+    if (!isAllowedAdminIp(ip, process.env.ADMIN_IP_ALLOWLIST)) {
+      return notFound(request);
+    }
+
     const session = await readToken(request.cookies.get("session")?.value);
 
     if (!session?.userId) {

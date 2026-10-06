@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -89,6 +90,7 @@ export async function saveCategoryAction(
   await logAudit({ action: id ? "category.update" : "category.create", userId: admin.id,
     actorEmail: admin.email, entity: "category", entityId: id ?? undefined, summary: values.name });
   revalidatePath("/admin/kategoriler");
+  updateTag(CACHE_TAGS.catalog);
   revalidatePath("/", "layout");
   return { ok: true, message: "Kategori kaydedildi." };
 }
@@ -101,6 +103,7 @@ export async function deleteCategoryAction(id: string) {
     entity: "category", entityId: id });
   revalidatePath("/admin/kategoriler");
   revalidatePath("/", "layout");
+  updateTag(CACHE_TAGS.catalog);
   return { ok: true };
 }
 
