@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaAssets } from "@/db/schema";
-import { requireAdmin, requirePermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import MediaLibrary from "@/components/admin/MediaLibrary";
 
 export const metadata = { title: "Medya" };

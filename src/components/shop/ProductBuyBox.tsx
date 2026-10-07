@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Heart, Minus, Plus, Ruler, ShoppingBag, Truck } from "lucide-react";
 import type { ProductVariant } from "@/db/schema";
@@ -52,6 +52,41 @@ export default function ProductBuyBox({
     [variants, color],
   );
 
+  /*
+   * "Beden" mi, "Seçenek" mi?
+   *
+   * Varyantın ikinci ekseni şemada tek bir alandır (size). İç giyimde bu
+   * gerçekten bedendir (S, M, 75B); jel, prezervatif ya da oyuncak
+   * tarafında hacim/adet olur ("100 ml", "12'li"). Giysi bedenine
+   * benzemeyen bir değer varsa başlık "Seçenek"e döner ve beden tablosu
+   * bağlantısı gizlenir — yoksa müşteriye 100 ml için beden tablosu
+   * önerilmiş olur.
+   */
+  const isApparelSizing = useMemo(() => {
+    const apparel = /^(xs|s|m|l|xl|xxl|\d{2,3}[a-f]|\d{2}|s\/m|m\/l|l\/xl)$/i;
+    return variants.every((v) => apparel.test(v.size.trim()));
+  }, [variants]);
+  const sizeLabel = isApparelSizing ? "Beden" : "Seçenek";
+
+  /*
+   * Tek seçenekli ürün ("Tek beden", tek hacim) için seçim listesi
+   * göstermenin anlamı yok: tek düğmeyi müşteriye tıklatmak, sepete
+   * eklemeyi gereksiz yere bir adım uzatır. Seçenek kendiliğinden
+   * işaretlenir ve blok gizlenir.
+   */
+  /*
+   * Tek renkte üretilen ürünlerde (jel, prezervatif, makine) varyant
+   * şeması gereği bir renk adı yazmak zorundayız; katalogda bu "Standart"
+   * geçiyor. Müşteriye "Renk: Standart" diye tek bir daire göstermek
+   * bilgi değil gürültüdür — o blok gizlenir.
+   */
+  const showColors = colors.length > 1 || (colors.length === 1 && colors[0].name !== "Standart");
+
+  const singleOption = sizesForColor.length === 1;
+  useEffect(() => {
+    if (singleOption) setSize(sizesForColor[0].size);
+  }, [singleOption, sizesForColor]);
+
   const selectedVariant = sizesForColor.find((v) => v.size === size) ?? null;
   const activePrice = selectedVariant?.priceOverride ?? price;
   const discount = discountPercent(activePrice, compareAtPrice);
@@ -59,7 +94,7 @@ export default function ProductBuyBox({
 
   function handleAdd() {
     if (!selectedVariant) {
-      setFeedback({ ok: false, text: "Lütfen bir beden seç." });
+      setFeedback({ ok: false, text: `Lütfen bir ${sizeLabel.toLocaleLowerCase("tr")} seç.` });
       return;
     }
     startTransition(async () => {
@@ -102,7 +137,7 @@ export default function ProductBuyBox({
         <p className="mt-1 text-[12px] text-[color:var(--color-muted)]">KDV dahil fiyat</p>
 
         {/* Renk */}
-        {colors.length > 0 && (
+        {showColors && (
           <div className="mt-7">
             <p className="mb-2.5 text-[12px] font-medium">
               Renk: <span className="text-[color:var(--color-ink-soft)]">{color}</span>
@@ -138,19 +173,21 @@ export default function ProductBuyBox({
           </div>
         )}
 
-        {/* Beden */}
-        {sizesForColor.length > 0 && (
+        {/* Beden / seçenek */}
+        {sizesForColor.length > 0 && !singleOption && (
           <div className="mt-7">
             <div className="mb-2.5 flex items-center justify-between">
-              <p className="text-[12px] font-medium">Beden</p>
-              <button
-                type="button"
-                onClick={() => setSizeGuideOpen(true)}
-                className="flex items-center gap-1.5 text-[12px] text-[color:var(--color-brand)] underline"
-              >
-                <Ruler size={13} strokeWidth={1.5} />
-                Beden tablosu
-              </button>
+              <p className="text-[12px] font-medium">{sizeLabel}</p>
+              {isApparelSizing && (
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideOpen(true)}
+                  className="flex items-center gap-1.5 text-[12px] text-[color:var(--color-brand)] underline"
+                >
+                  <Ruler size={13} strokeWidth={1.5} />
+                  Beden tablosu
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {sizesForColor.map((variant) => {

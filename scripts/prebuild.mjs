@@ -162,3 +162,23 @@ if (process.env.AUTO_SEED === "1") {
     process.exit(1);
   }
 }
+
+/* 5) Katalog yükleyici ---------------------------------------------------
+ *
+ * IMPORT_CATALOG=1 ise src/db/katalog-yetiskin.ts içindeki kategori ve
+ * ürün ağacı veritabanına yazılır. Yükleyici HİÇBİR ŞEY SİLMEZ: zaten
+ * var olan kategori/ürün (slug'ına bakarak) atlanır. Bu yüzden değişkeni
+ * açık bırakmak güvenlidir — paneldeki elle düzeltmelerin üzerine yazmaz.
+ */
+if (process.env.IMPORT_CATALOG === "1") {
+  console.log("→ IMPORT_CATALOG=1 — katalog kontrol ediliyor...");
+  const katalog = spawnSync("npx", ["tsx", "src/db/import-katalog.ts"], {
+    stdio: "inherit",
+    env: process.env,
+    shell: process.platform === "win32",
+  });
+  if (katalog.status !== 0) {
+    console.error("✗ Katalog yüklenemedi. Derleme durduruldu.");
+    process.exit(1);
+  }
+}

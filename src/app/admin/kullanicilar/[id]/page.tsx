@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { adminUrl } from "@/lib/admin-path";
 import { db } from "@/db";
 import { orders, users } from "@/db/schema";
-import { requireAdmin, requirePermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatPrice } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import UserEditForm from "@/components/admin/UserEditForm";

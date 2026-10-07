@@ -30,6 +30,15 @@ export default async function Header() {
 
   const announcements = settings.announce_enabled === "1" ? parseLines(settings.announce_items) : [];
 
+  /*
+   * Üst menüye kaç ana kategori sığar?
+   * Logo + arama + hesap/sepet simgeleriyle birlikte tek satırda yedi
+   * başlık rahat durur. Fazlası "Diğer" açılır listesine düşer.
+   */
+  const MAX_INLINE_CATEGORIES = 7;
+  const inlineCategories = tree.slice(0, MAX_INLINE_CATEGORIES);
+  const overflowCategories = tree.slice(MAX_INLINE_CATEGORIES);
+
   return (
     <header className="sticky top-0 z-40 bg-white">
       {announcements.length > 0 && (
@@ -65,11 +74,11 @@ export default async function Header() {
 
             {/* Masaüstü menü */}
             <nav className="ml-5 hidden items-stretch lg:flex" aria-label="Ana menü">
-              {tree.map((parent) => (
+              {inlineCategories.map((parent) => (
                 <div key={parent.id} className="group relative flex items-center">
                   <Link
                     href={`/kategori/${parent.slug}`}
-                    className="px-3.5 py-3 text-[12.5px] font-semibold tracking-[-0.01em] transition-colors hover:text-[color:var(--color-brand)]"
+                    className="px-3 py-3 text-[12.5px] font-semibold tracking-[-0.01em] transition-colors hover:text-[color:var(--color-brand)]"
                   >
                     {parent.name}
                   </Link>
@@ -99,6 +108,46 @@ export default async function Header() {
                   )}
                 </div>
               ))}
+
+              {/*
+                Taşan kategoriler.
+                Menüye sığmayanlar tek bir "Diğer" başlığı altında toplanır —
+                yoksa 12 ana kategori üst satırı taşırır ve logo ile sepet
+                simgesi birbirine girer. Sıralamayı panelden değiştirince
+                hangi kategorilerin üstte kalacağına sen karar verirsin.
+              */}
+              {overflowCategories.length > 0 && (
+                <div className="group relative flex items-center">
+                  <span className="cursor-default px-3 py-3 text-[12.5px] font-semibold tracking-[-0.01em]">
+                    Diğer
+                  </span>
+                  <div className="invisible absolute right-0 top-full z-50 w-[560px] opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+                    <div className="border border-[color:var(--color-line)] border-t-0 bg-white p-6">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                        {overflowCategories.map((parent) => (
+                          <div key={parent.id}>
+                            <Link
+                              href={`/kategori/${parent.slug}`}
+                              className="block text-[12.5px] font-semibold"
+                            >
+                              {parent.name}
+                            </Link>
+                            {parent.children.map((child) => (
+                              <Link
+                                key={child.id}
+                                href={`/kategori/${child.slug}`}
+                                className="block py-1 text-[13px] text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
+                              >
+                                {child.name}
+                              </Link>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {settings.menu_highlight_label && (
                 <Link

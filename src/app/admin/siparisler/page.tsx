@@ -1,7 +1,7 @@
 import { adminUrl } from "@/lib/admin-path";
 import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, like, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import { db } from "@/db";
 import { orderItems, orders } from "@/db/schema";

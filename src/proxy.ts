@@ -127,7 +127,16 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  /*
+   * 4) İSTENEN YOLU İLERİ TAŞI
+   * Next.js'te layout bileşenleri hangi sayfanın istendiğini göremez.
+   * 18+ perdesi, yasal metinler ve giriş ekranı gibi muaf yollarda
+   * görünmemeli — bu yüzden yolu bir başlık olarak isteğe ekliyoruz ve
+   * AgeGate bunu sunucuda okuyor.
+   */
+  const forwarded = new Headers(request.headers);
+  forwarded.set("x-yol", pathname);
+  return NextResponse.next({ request: { headers: forwarded } });
 }
 
 export const config = {

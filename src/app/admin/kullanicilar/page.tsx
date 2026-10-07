@@ -12,7 +12,7 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { Search, ShieldCheck, User } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { requireAdmin, requirePermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { ROLE_LABELS, ROLE_VALUES, isStaffRole, type Role } from "@/lib/permissions";
 
