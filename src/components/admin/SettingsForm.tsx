@@ -8,10 +8,16 @@ import MediaPicker from "./MediaPicker";
 
 export default function SettingsForm({
   settings,
-  iyzicoConfigured,
+  payment,
 }: {
   settings: Record<string, string>;
-  iyzicoConfigured: boolean;
+  /** Hangi sanal POS aktif, anahtarları girilmiş mi, test modunda mı */
+  payment: {
+    id: string;
+    label: string;
+    configured: boolean;
+    testMode: boolean;
+  };
 }) {
   const [state, action, pending] = useActionState<ContentState, FormData>(
     saveSettingsAction,
@@ -136,14 +142,45 @@ export default function SettingsForm({
       <section className="card space-y-4 p-5">
         <h2 className="text-[15px] font-semibold">Ödeme Yöntemleri</h2>
 
-        {!iyzicoConfigured && (
+        {/*
+          SANAL POS DURUMU
+          "Kredi kartı" kutusunu işaretlemek tek başına yetmez; sağlayıcı ve
+          anahtarları da tanımlı olmalı. Hangi aşamada olduğun burada yazar ki
+          müşteri ödeme ekranında hata görmesin.
+        */}
+        {!payment.configured ? (
           <div className="flex items-start gap-2.5 border border-[color:var(--color-sale)] bg-red-50 p-3.5 text-[12.5px]">
             <AlertTriangle size={15} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-sale)]" />
             <span>
-              iyzico API anahtarları <code>.env</code> dosyasında tanımlı değil. Kredi kartı
-              ödemesi bu haliyle çalışmaz. IYZICO_API_KEY ve IYZICO_SECRET_KEY değerlerini
-              girdikten sonra sunucuyu yeniden başlat.
+              <strong>Kartla ödeme kapalı.</strong>{" "}
+              {payment.id === "yok" ? (
+                <>
+                  Sanal POS sağlayıcısı seçilmemiş. Sunucu ayarlarında{" "}
+                  <code>PAYMENT_PROVIDER</code> değerini sağlayıcının adına çevir.
+                </>
+              ) : (
+                <>
+                  Sağlayıcı <strong>{payment.label}</strong> seçili ama API anahtarları
+                  tanımlı değil. Anahtarları sunucu ortam değişkenlerine girip yeniden
+                  dağıtım yapman gerekiyor.
+                </>
+              )}{" "}
+              Havale/EFT ve kapıda ödeme çalışmaya devam eder.
             </span>
+          </div>
+        ) : payment.testMode ? (
+          <div className="flex items-start gap-2.5 border border-[color:var(--color-warn)] bg-amber-50 p-3.5 text-[12.5px]">
+            <AlertTriangle size={15} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-warn)]" />
+            <span>
+              <strong>{payment.label} TEST modunda.</strong> Kartlardan gerçek para
+              çekilmez; gerçek kart denemesi de başarısız olur. Canlıya geçerken
+              sağlayıcının üretim adresini ve canlı anahtarlarını tanımla.
+            </span>
+          </div>
+        ) : (
+          <div className="border border-[color:var(--color-line)] bg-[color:var(--color-surface-2)] p-3.5 text-[12.5px]">
+            Kartla ödeme <strong>{payment.label}</strong> üzerinden canlı olarak
+            çalışıyor.
           </div>
         )}
 
@@ -155,7 +192,7 @@ export default function SettingsForm({
               defaultChecked={settings.payment_credit_card === "1"}
               className="h-4 w-4 accent-[color:var(--color-brand)]"
             />
-            Kredi / banka kartı (iyzico 3D Secure)
+            {`Kredi / banka kartı (${payment.label} · 3D Secure)`}
           </label>
           <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
             <input

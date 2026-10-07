@@ -4,10 +4,10 @@
  * Kartın bankasına göre geçerli taksit seçeneklerini döner.
  */
 
-import { isIyzicoConfigured, retrieveInstallments } from "@/lib/iyzico";
+import { getPaymentProvider } from "@/lib/payment";
 import { getCartTotals } from "@/lib/cart";
 import { getNumericSetting } from "@/lib/settings";
-import { toIyzicoPrice } from "@/lib/money";
+import { toProviderPrice } from "@/lib/money";
 import { createId } from "@/lib/id";
 
 export async function POST(request: Request) {
@@ -31,18 +31,21 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Sepet boş." }, { status: 400 });
   }
 
-  if (!isIyzicoConfigured()) {
+  const provider = getPaymentProvider();
+
+  // Sağlayıcı yok, anahtar yok ya da taksit desteklemiyorsa: tek çekim göster.
+  if (!provider.isConfigured() || !provider.supportsInstallments) {
     return Response.json({
       ok: true,
       configured: false,
-      options: [{ installmentNumber: 1, installmentPrice: toIyzicoPrice(totals.grandTotal), totalPrice: toIyzicoPrice(totals.grandTotal) }],
+      options: [{ installmentNumber: 1, installmentPrice: toProviderPrice(totals.grandTotal), totalPrice: toProviderPrice(totals.grandTotal) }],
     });
   }
 
   const maxInstallment = await getNumericSetting("max_installment");
-  const result = await retrieveInstallments(
+  const result = await provider.retrieveInstallments(
     binNumber,
-    toIyzicoPrice(totals.grandTotal),
+    toProviderPrice(totals.grandTotal),
     createId(16),
   );
 

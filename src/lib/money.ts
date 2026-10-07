@@ -34,8 +34,8 @@ export function parsePrice(input: string | number): number {
   return Math.round(value * 100);
 }
 
-/** iyzico'ya gönderilecek format: 29990 -> "299.90" */
-export function toIyzicoPrice(kurus: number): string {
+/** Sanal POS sağlayıcılarına gönderilecek format: 29990 -> "299.90" */
+export function toProviderPrice(kurus: number): string {
   return (kurus / 100).toFixed(2);
 }
 

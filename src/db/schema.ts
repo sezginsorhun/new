@@ -463,10 +463,16 @@ export const payments = mysqlTable(
     status: mysqlEnum("status", PAYMENT_STATUS_VALUES).notNull().default("PENDING"),
     amount: int("amount").notNull(), // kuruş
 
-    // iyzico alanları
+    /*
+     * Sağlayıcı alanları.
+     * TS tarafındaki adlar bilerek nötr: sanal POS değişince kod değişmesin.
+     * Veritabanı sütun adları eski hâliyle bırakıldı (iyzico_payment_id) —
+     * yeniden adlandırmak veri taşıma gerektirirdi, hiçbir faydası yok.
+     * Hangi sağlayıcının işlediği `provider` sütununda yazar.
+     */
     conversationId: varchar("conversation_id", { length: 60 }),
-    iyzicoPaymentId: varchar("iyzico_payment_id", { length: 60 }),
-    iyzicoTransactionId: varchar("iyzico_transaction_id", { length: 60 }),
+    providerPaymentId: varchar("iyzico_payment_id", { length: 60 }),
+    providerTransactionId: varchar("iyzico_transaction_id", { length: 60 }),
     installment: int("installment").notNull().default(1),
     cardFamily: varchar("card_family", { length: 40 }), // Bonus, World, Axess
     cardAssociation: varchar("card_association", { length: 40 }), // VISA, MASTER_CARD

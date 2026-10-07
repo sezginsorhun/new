@@ -113,7 +113,7 @@ export default async function Footer() {
             <Link href="/sayfa/gizlilik-politikasi" className="link-underline">
               KVKK Aydınlatma Metni
             </Link>
-            <span className="font-medium">Güvenli ödeme · iyzico · 3D Secure</span>
+            <span className="font-medium">Güvenli ödeme · 3D Secure</span>
           </div>
         </div>
       </div>

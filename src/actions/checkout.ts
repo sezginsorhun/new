@@ -14,8 +14,8 @@ import {
   markOrderFailed,
   reserveStockForOrder,
 } from "@/lib/orders";
-import { initialize3DSecure, isIyzicoConfigured } from "@/lib/iyzico";
-import { toIyzicoPrice } from "@/lib/money";
+import { getPaymentProvider } from "@/lib/payment";
+import { toProviderPrice } from "@/lib/money";
 import { sendAdminOrderNotice, sendOrderConfirmation } from "@/lib/mail";
 import { createId } from "@/lib/id";
 
@@ -176,11 +176,12 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
   }
 
   /* 6) Kartlı ödeme */
-  if (!isIyzicoConfigured()) {
+  const provider = getPaymentProvider();
+  if (!provider.isConfigured()) {
     return {
       ok: false,
       error:
-        "Kredi kartı ödemesi şu an aktif değil (iyzico anahtarları tanımlı değil). Havale/EFT veya kapıda ödeme seçebilirsin.",
+        "Kredi kartı ödemesi şu an aktif değil. Havale/EFT veya kapıda ödeme seçebilirsin.",
     };
   }
 
@@ -228,7 +229,7 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
     name: `${item.productName} (${item.variantInfo})`.slice(0, 100),
     category1: "İç Giyim",
     itemType: "PHYSICAL" as const,
-    price: toIyzicoPrice(item.lineTotal),
+    price: toProviderPrice(item.lineTotal),
   }));
 
   // İndirim varsa kalem fiyatlarını oransal düşür, kargoyu kalem olarak ekle
@@ -242,7 +243,7 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
           : Math.round((item.lineTotal / itemsSum) * created.order.discountTotal);
       remaining -= share;
       const net = Math.max(item.lineTotal - share, 1);
-      basketItems[index].price = toIyzicoPrice(net);
+      basketItems[index].price = toProviderPrice(net);
     });
   }
   if (created.order.shippingTotal > 0) {
@@ -251,17 +252,17 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
       name: "Kargo Bedeli",
       category1: "Kargo",
       itemType: "PHYSICAL" as const,
-      price: toIyzicoPrice(created.order.shippingTotal),
+      price: toProviderPrice(created.order.shippingTotal),
     });
   }
 
   const basketSum = basketItems.reduce((sum, item) => sum + Number(item.price) * 100, 0);
 
-  const result = await initialize3DSecure({
+  const result = await provider.start3DSecure({
     conversationId,
     basketId: created.order.orderNumber,
-    price: toIyzicoPrice(Math.round(basketSum)),
-    paidPrice: toIyzicoPrice(created.order.grandTotal),
+    price: toProviderPrice(Math.round(basketSum)),
+    paidPrice: toProviderPrice(created.order.grandTotal),
     installment: cardParsed.data.installment,
     callbackUrl: `${siteUrl}/api/odeme/callback`,
     card: {

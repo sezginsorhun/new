@@ -1,6 +1,6 @@
 import { getSettings } from "@/lib/settings";
 import { requirePermission } from "@/lib/auth";
-import { isIyzicoConfigured } from "@/lib/iyzico";
+import { paymentProviderStatus } from "@/lib/payment";
 import SettingsForm from "@/components/admin/SettingsForm";
 
 export default async function AdminSettingsPage() {
@@ -14,7 +14,7 @@ export default async function AdminSettingsPage() {
         Kargo ücretleri, iletişim bilgileri ve ödeme yöntemleri.
       </p>
 
-      <SettingsForm settings={settings} iyzicoConfigured={isIyzicoConfigured()} />
+      <SettingsForm settings={settings} payment={paymentProviderStatus()} />
     </div>
   );
 }

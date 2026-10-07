@@ -190,10 +190,12 @@ export default async function AdminOrderDetailPage(
                   </dd>
                 </div>
               )}
-              {payment?.iyzicoPaymentId && (
+              {payment?.providerPaymentId && (
                 <div className="flex justify-between gap-3 sm:col-span-2">
-                  <dt className="text-[color:var(--color-muted)]">iyzico ödeme no</dt>
-                  <dd className="font-mono text-[12px]">{payment.iyzicoPaymentId}</dd>
+                  <dt className="text-[color:var(--color-muted)]">
+                    {payment.provider} ödeme no
+                  </dt>
+                  <dd className="font-mono text-[12px]">{payment.providerPaymentId}</dd>
                 </div>
               )}
               {payment?.errorMessage && (

@@ -8,9 +8,9 @@ import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin } from "@/lib/security";
 import { markOrderPaid, restoreStockForOrder } from "@/lib/orders";
-import { cancelPayment, refundPayment } from "@/lib/iyzico";
+import { getPaymentProvider } from "@/lib/payment";
 import { sendShippingNotice } from "@/lib/mail";
-import { toIyzicoPrice } from "@/lib/money";
+import { toProviderPrice } from "@/lib/money";
 
 export type OrderActionState = { ok: boolean; message: string } | null;
 
@@ -168,28 +168,43 @@ export async function refundOrderAction(orderId: string) {
     .limit(1);
 
   const payment = paymentRows[0];
-  if (!payment?.iyzicoPaymentId) {
-    return { ok: false, message: "Bu sipariş için iyzico ödeme kaydı yok." };
+  if (!payment?.providerPaymentId) {
+    return { ok: false, message: "Bu sipariş için kartlı ödeme kaydı yok." };
   }
 
-  // 1) İptal dene
-  const cancelResult = await cancelPayment(
-    payment.iyzicoPaymentId,
+  /*
+   * İadeyi ödemeyi İŞLEYEN sağlayıcıya göndeririz, şu an seçili olana değil.
+   * Sanal POS değiştirildiğinde eski siparişlerin iadesi yanlış kuruma
+   * gitmesin diye kayıttaki `provider` alanı esas alınır.
+   */
+  const provider = getPaymentProvider();
+  if (payment.provider && payment.provider !== provider.id) {
+    return {
+      ok: false,
+      message:
+        `Bu ödeme "${payment.provider}" ile alınmış, şu an "${provider.id}" aktif. ` +
+        "İadeyi ilgili sağlayıcının kendi panelinden yapman gerekiyor.",
+    };
+  }
+
+  // 1) İptal dene (gün sonu kapanmadıysa çalışır)
+  const cancelResult = await provider.cancel(
+    payment.providerPaymentId,
     payment.conversationId ?? orderId,
   );
 
   let succeeded = cancelResult.ok;
-  let note = cancelResult.ok ? "iyzico: ödeme iptal edildi" : cancelResult.error;
+  let note = cancelResult.ok ? `${provider.label}: ödeme iptal edildi` : cancelResult.error;
 
   // 2) Olmadıysa iade dene
-  if (!succeeded && payment.iyzicoTransactionId) {
-    const refundResult = await refundPayment(
-      payment.iyzicoTransactionId,
-      toIyzicoPrice(order.grandTotal),
+  if (!succeeded && payment.providerTransactionId) {
+    const refundResult = await provider.refund(
+      payment.providerTransactionId,
+      toProviderPrice(order.grandTotal),
       payment.conversationId ?? orderId,
     );
     succeeded = refundResult.ok;
-    note = refundResult.ok ? "iyzico: ödeme iade edildi" : refundResult.error;
+    note = refundResult.ok ? `${provider.label}: ödeme iade edildi` : refundResult.error;
   }
 
   if (!succeeded) {

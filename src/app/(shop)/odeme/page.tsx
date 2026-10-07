@@ -7,7 +7,7 @@ import { addresses } from "@/db/schema";
 import { getCartTotals } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { isIyzicoConfigured } from "@/lib/iyzico";
+import { isCardPaymentAvailable } from "@/lib/payment";
 import CheckoutForm from "@/components/shop/CheckoutForm";
 
 export const metadata: Metadata = {
@@ -50,8 +50,8 @@ export default async function CheckoutPage(props: PageProps<"/odeme">) {
         savedAddresses={savedAddresses}
         defaultEmail={user?.email ?? ""}
         defaultPhone={user?.phone ?? ""}
-        cardEnabled={settings.payment_credit_card === "1" && isIyzicoConfigured()}
-        cardConfigured={isIyzicoConfigured()}
+        cardEnabled={settings.payment_credit_card === "1" && isCardPaymentAvailable()}
+        cardConfigured={isCardPaymentAvailable()}
         transferEnabled={settings.payment_bank_transfer === "1"}
         codEnabled={settings.payment_cod === "1"}
         codFee={Number(settings.cod_fee) || 0}

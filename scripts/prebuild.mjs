@@ -95,8 +95,38 @@ if (isProduction) {
         "   Panele yalnızca yedek kodlarla girebilirsin.",
     );
   }
-  if (!process.env.IYZICO_API_KEY || !process.env.IYZICO_SECRET_KEY) {
-    warnings.push("iyzico anahtarları yok — kredi kartıyla ödeme çalışmaz (havale/kapıda ödeme çalışır).");
+  /*
+   * SANAL POS
+   * Hangi sağlayıcının seçildiğine göre o sağlayıcının anahtarlarını arıyoruz.
+   * PAYMENT_PROVIDER=yok ise bu bilinçli bir tercihtir; uyarı vermiyoruz.
+   */
+  const paymentProvider = (process.env.PAYMENT_PROVIDER || "iyzico").toLowerCase();
+  const providerKeys = {
+    iyzico: ["IYZICO_API_KEY", "IYZICO_SECRET_KEY"],
+  };
+  if (paymentProvider === "yok") {
+    warnings.push(
+      "PAYMENT_PROVIDER=yok — kartla ödeme kapalı. Havale/EFT ve kapıda ödeme çalışır.",
+    );
+  } else if (providerKeys[paymentProvider]) {
+    const missing = providerKeys[paymentProvider].filter((key) => !process.env[key]);
+    if (missing.length) {
+      warnings.push(
+        `${paymentProvider} anahtarları eksik (${missing.join(", ")}) — kartla ödeme çalışmaz.\n` +
+          "   Havale/EFT ve kapıda ödeme etkilenmez.",
+      );
+    } else if ((process.env.IYZICO_BASE_URL || "").includes("sandbox")) {
+      warnings.push(
+        "Sanal POS TEST (sandbox) adresine bakıyor — gerçek kartlardan tahsilat YAPILMAZ.\n" +
+          "   Canlıya geçerken sağlayıcının üretim adresini ve canlı anahtarlarını gir.",
+      );
+    }
+  } else {
+    problems.push(
+      `PAYMENT_PROVIDER="${paymentProvider}" tanınmıyor.\n` +
+        "   Geçerli değerler: iyzico, yok. Yeni bir sağlayıcı eklediysen\n" +
+        "   src/lib/payment/index.ts içindeki PROVIDERS kaydına da eklemelisin.",
+    );
   }
   if (process.env.STORAGE_DRIVER === "file") {
     warnings.push(

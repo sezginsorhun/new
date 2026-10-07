@@ -193,7 +193,7 @@ export default function OrderControls({
             Ödemeyi İade Et
           </h2>
           <p className="mb-3 text-[12px] text-[color:var(--color-ink-soft)]">
-            iyzico üzerinden tam iade yapılır ve stok geri eklenir. Bu işlem geri alınamaz.
+            Ödeme sağlayıcısı üzerinden tam iade yapılır ve stok geri eklenir. Bu işlem geri alınamaz.
           </p>
           {confirmRefund ? (
             <div className="flex gap-2">

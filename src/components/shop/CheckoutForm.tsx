@@ -504,8 +504,8 @@ export default function CheckoutForm({
 
               <p className="flex items-start gap-2 text-[12px] text-[color:var(--color-muted)]">
                 <Lock size={13} strokeWidth={1.5} className="mt-0.5 shrink-0" />
-                Kart bilgileriniz sitemizde saklanmaz; doğrudan lisanslı ödeme kuruluşu
-                iyzico&apos;ya iletilir ve 3D Secure ile doğrulanır.
+                Kart bilgileriniz sitemizde saklanmaz; doğrudan lisanslı ödeme
+                kuruluşuna iletilir ve 3D Secure ile doğrulanır.
               </p>
             </div>
           )}
@@ -629,8 +629,7 @@ export default function CheckoutForm({
 
           {!cardConfigured && (
             <p className="mt-3 text-[11.5px] text-[color:var(--color-muted)]">
-              Not: iyzico anahtarları .env dosyasında tanımlanmadığı için kartla ödeme
-              kapalı. Havale/EFT ve kapıda ödeme çalışıyor.
+              Kartla ödeme şu an kapalı. Havale/EFT ve kapıda ödeme çalışıyor.
             </p>
           )}
         </div>

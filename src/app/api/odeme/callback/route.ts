@@ -15,7 +15,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, payments } from "@/db/schema";
-import { complete3DSecure, MD_STATUS_MESSAGES } from "@/lib/iyzico";
+import { getPaymentProvider } from "@/lib/payment";
 import { markOrderFailed, markOrderPaid } from "@/lib/orders";
 import { sendAdminOrderNotice, sendOrderConfirmation } from "@/lib/mail";
 import { getOrderItems } from "@/lib/orders";
@@ -84,10 +84,12 @@ export async function POST(request: Request) {
     return redirectPage("/odeme/sonuc?durum=hata&mesaj=Sipariş%20bulunamadı");
   }
 
+  const provider = getPaymentProvider();
+
   /* --- 1. adım: 3D doğrulama sonucu --- */
   if (status !== "success" || mdStatus !== "1") {
     const reason =
-      MD_STATUS_MESSAGES[mdStatus] ?? "3D Secure doğrulaması tamamlanamadı.";
+      provider.verificationMessages[mdStatus] ?? "3D Secure doğrulaması tamamlanamadı.";
     await db
       .update(payments)
       .set({ status: "FAILED", errorCode: mdStatus, errorMessage: reason })
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
   }
 
   /* --- 2. adım: ödemeyi kesinleştir --- */
-  const result = await complete3DSecure(conversationId, paymentId, conversationData);
+  const result = await provider.complete3DSecure(conversationId, paymentId, conversationData);
 
   if (!result.ok) {
     await db
@@ -122,8 +124,9 @@ export async function POST(request: Request) {
     .update(payments)
     .set({
       status: "SUCCESS",
-      iyzicoPaymentId: result.paymentId,
-      iyzicoTransactionId: result.paymentTransactionId ?? null,
+      provider: provider.id,
+      providerPaymentId: result.paymentId,
+      providerTransactionId: result.transactionId ?? null,
       installment: result.installment,
       cardFamily: result.cardFamily ?? null,
       cardAssociation: result.cardAssociation ?? null,

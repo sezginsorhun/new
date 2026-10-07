@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Heart, Minus, Plus, Ruler, ShoppingBag, Truck } from "lucide-react";
 import type { ProductVariant } from "@/db/schema";
@@ -83,11 +83,11 @@ export default function ProductBuyBox({
   const showColors = colors.length > 1 || (colors.length === 1 && colors[0].name !== "Standart");
 
   const singleOption = sizesForColor.length === 1;
-  useEffect(() => {
-    if (singleOption) setSize(sizesForColor[0].size);
-  }, [singleOption, sizesForColor]);
+  // Efekt kurup state yazmak yerine render sırasında türetiyoruz: tek
+  // seçenek varsa seçili sayılır, fazladan bir render turu olmaz.
+  const effectiveSize = singleOption ? sizesForColor[0].size : size;
 
-  const selectedVariant = sizesForColor.find((v) => v.size === size) ?? null;
+  const selectedVariant = sizesForColor.find((v) => v.size === effectiveSize) ?? null;
   const activePrice = selectedVariant?.priceOverride ?? price;
   const discount = discountPercent(activePrice, compareAtPrice);
   const maxQuantity = selectedVariant ? Math.min(selectedVariant.stock, 10) : 10;
