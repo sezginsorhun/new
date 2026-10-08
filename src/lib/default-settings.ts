@@ -65,6 +65,25 @@ export const DEFAULT_SETTINGS = {
 
   /* --- Taksit --- */
   max_installment: "9",
+
+  /* --- Tema (Görünüm → Tema) ---------------------------------------------
+   * Buradaki değerler globals.css'teki varsayılanlarla AYNI olmalıdır.
+   * Aynı oldukları sürece hiç CSS üretilmez; panelden değiştirildiğinde
+   * sadece değişen satır yazılır. İkisini birlikte güncelle.
+   */
+  theme_brand: "#c62a4e",
+  theme_brand_dark: "#a41f3e",
+  theme_brand_soft: "#fdeef1",
+  theme_ink: "#141110",
+  theme_ink_soft: "#5a524e",
+  theme_muted: "#8b8380",
+  theme_cream: "#ffffff",
+  theme_surface_2: "#f6f4f3",
+  theme_line: "#e7e3e0",
+  theme_radius: "2",
+  theme_font_scale: "100",
+  /** Serbest CSS. Boşsa hiçbir şey basılmaz. */
+  custom_css: "",
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;

@@ -19,6 +19,7 @@ import {
   Star,
   Tag,
   UserCog,
+  Palette,
   Users,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const ICONS = {
   FileText,
   Settings,
   UserCog,
+  Palette,
 } as const;
 
 /**
@@ -75,6 +77,7 @@ const GROUPS: {
     title: "Görünüm",
     items: [
       { href: adminUrl("anasayfa"), label: "Ana Sayfa Düzeni", icon: "LayoutTemplate", permission: "content.manage" },
+      { href: adminUrl("tema"), label: "Tema", icon: "Palette", permission: "content.manage" },
       { href: adminUrl("bannerlar"), label: "Carousel", icon: "ImageIcon", permission: "content.manage" },
       { href: adminUrl("medya"), label: "Medya", icon: "Images", permission: "content.manage" },
       { href: adminUrl("sayfalar"), label: "Sayfalar", icon: "FileText", permission: "content.manage" },

@@ -47,6 +47,8 @@ export type AuditAction =
   | "media.delete"
   | "page.update"
   | "settings.update"
+  | "theme.update"
+  | "theme.reset"
   | "customer.update"
   | "review.moderate";
 

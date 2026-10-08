@@ -13,12 +13,19 @@ import {
   reviews,
   users,
 } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin } from "@/lib/security";
 import { setSettings } from "@/lib/settings";
 import { slugify } from "@/lib/utils";
 import { parsePrice } from "@/lib/money";
+import { DEFAULT_SETTINGS } from "@/lib/default-settings";
+import {
+  THEME_COLORS,
+  THEME_NUMBERS,
+  isValidColor,
+  sanitizeCustomCss,
+} from "@/lib/theme";
 
 export type ContentState = { ok: boolean; message: string } | null;
 
@@ -339,4 +346,89 @@ export async function saveSettingsAction(
   revalidatePath("/admin/ayarlar");
   revalidatePath("/", "layout");
   return { ok: true, message: "Ayarlar kaydedildi." };
+}
+
+/* ------------------------------- TEMA ----------------------------------- */
+
+/**
+ * GÖRÜNÜM → TEMA
+ *
+ * Renk/ölçü değerleri ve serbest CSS kaydedilir. Geçersiz bir renk gelirse
+ * o alan YAZILMAZ — eski değeri kalır, site bozulmaz. Serbest CSS
+ * `sanitizeCustomCss` ile temizlenerek saklanır; yani veritabanında bile
+ * tehlikeli kalıp durmaz.
+ */
+export async function saveThemeAction(
+  _prev: ContentState,
+  formData: FormData,
+): Promise<ContentState> {
+  await assertSameOrigin();
+  const admin = await requirePermission("content.manage");
+
+  const entries: Record<string, string> = {};
+  const reddedilen: string[] = [];
+
+  for (const { key, label } of THEME_COLORS) {
+    const raw = String(formData.get(key) ?? "").trim();
+    if (!raw) continue;
+    if (!isValidColor(raw)) {
+      reddedilen.push(label);
+      continue;
+    }
+    entries[key] = raw.toLowerCase();
+  }
+
+  for (const { key, min, max } of THEME_NUMBERS) {
+    const raw = Number(formData.get(key));
+    if (!Number.isFinite(raw)) continue;
+    entries[key] = String(Math.min(Math.max(Math.round(raw), min), max));
+  }
+
+  entries.custom_css = sanitizeCustomCss(String(formData.get("custom_css") ?? ""));
+
+  await setSettings(entries);
+  await logAudit({
+    action: "theme.update",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary: "Tema güncellendi",
+    meta: { keys: Object.keys(entries) },
+  });
+
+  updateTag(CACHE_TAGS.settings);
+  revalidatePath("/", "layout");
+
+  return reddedilen.length
+    ? {
+        ok: true,
+        message: `Kaydedildi. Şu alanlar geçersiz renk kodu içerdiği için atlandı: ${reddedilen.join(", ")}.`,
+      }
+    : { ok: true, message: "Tema kaydedildi. Siteyi yenileyip görebilirsin." };
+}
+
+/**
+ * Temayı fabrika ayarına döndürür.
+ * Bir CSS denemesi siteyi okunmaz hale getirdiğinde buradan tek tıkla
+ * geri dönülür — paneldeki görünüm bundan etkilenmediği için bu düğmeye
+ * her zaman ulaşılabilir.
+ */
+export async function resetThemeAction(): Promise<ContentState> {
+  await assertSameOrigin();
+  const admin = await requirePermission("content.manage");
+
+  const entries: Record<string, string> = { custom_css: "" };
+  for (const { key } of THEME_COLORS) entries[key] = String(DEFAULT_SETTINGS[key]);
+  for (const { key } of THEME_NUMBERS) entries[key] = String(DEFAULT_SETTINGS[key]);
+
+  await setSettings(entries);
+  await logAudit({
+    action: "theme.reset",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary: "Tema varsayılana döndürüldü",
+  });
+
+  updateTag(CACHE_TAGS.settings);
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Tema varsayılana döndürüldü." };
 }
