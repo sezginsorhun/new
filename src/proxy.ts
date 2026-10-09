@@ -72,8 +72,56 @@ function notFound(request: NextRequest) {
   return NextResponse.rewrite(url, { status: 404 });
 }
 
+/**
+ * TEK GEÇERLİ ADRES (canonical host)
+ *
+ * Site birden fazla domainden açılabiliyorsa (domain değiştirdiğinde eski
+ * adres bir süre daha açık kalır), hepsi tek bir adrese 301 ile taşınır.
+ * Böylece:
+ *   • Eski bağlantılar ve Google kayıtları kırılmaz, yeniye devrolur.
+ *   • Aynı içerik iki adreste görünmez (SEO'da "yinelenen içerik").
+ *   • Çerezler tek alan adında toplanır; oturum ve sepet bölünmez.
+ *
+ * `CANONICAL_HOST` tanımlı DEĞİLSE bu blok hiçbir şey yapmaz. Bilerek
+ * böyle: değişkeni girmeyi unutmak siteyi bozmaz, sadece yönlendirme
+ * olmaz.
+ *
+ * YALNIZCA GET/HEAD yönlendirilir. 301 bir POST'u yeniden gönderirken
+ * gövdeyi düşürebilir; ödeme sağlayıcısının callback'i ya da bir form
+ * gönderimi eski adrese düşerse sessizce kaybolmasın diye dokunmuyoruz.
+ */
+function canonicalRedirect(request: NextRequest): NextResponse | null {
+  const canonical = (process.env.CANONICAL_HOST || "").trim().toLowerCase();
+  if (!canonical) return null;
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+  if (!host || host === canonical) return null;
+
+  // Geliştirme ortamı ve yerel adresler dışarıda bırakılır.
+  if (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "[::1]" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local")
+  ) {
+    return null;
+  }
+
+  const url = new URL(request.url);
+  url.protocol = "https:";
+  url.host = canonical;
+  url.port = "";
+  return NextResponse.redirect(url, 301);
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  /* 0) Eski domainden gelenleri yeni adrese taşı ------------------------- */
+  const redirectToCanonical = canonicalRedirect(request);
+  if (redirectToCanonical) return redirectToCanonical;
 
   /* 1) Panelin gerçek yolu dışarıya kapalı -------------------------------- */
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {

@@ -83,12 +83,46 @@ if (!adminPath || !publicAdminPath) {
   );
 }
 
+/* Domain tutarlılığı — her ortamda kontrol edilir -------------------------
+ *
+ * CANONICAL_HOST yönlendirmenin hedefi, NEXT_PUBLIC_SITE_URL ise
+ * e-postalarda, sitemap'te ve ödeme callback'inde yazan adres. İkisi farklı
+ * olursa site ya kendini sonsuz yönlendirme döngüsüne sokar ya da müşteriye
+ * yanlış adres gönderir. Bu yüzden uyarı değil, HATA: derleme durur.
+ *
+ * Bilerek `isProduction` bloğunun DIŞINDA: o blok yalnızca NODE_ENV veya CI
+ * tanımlıyken çalışır, Hostinger'da ikisi de yok (NODE_ENV bilerek
+ * eklenmiyor — devDependencies'i kurdurmuyor).
+ */
+const canonicalHost = (process.env.CANONICAL_HOST || "").trim().toLowerCase();
+if (canonicalHost) {
+  let siteHost = "";
+  try {
+    siteHost = new URL(process.env.NEXT_PUBLIC_SITE_URL || "").hostname.toLowerCase();
+  } catch {
+    siteHost = "";
+  }
+  if (!siteHost) {
+    problems.push(
+      `CANONICAL_HOST tanımlı ("${canonicalHost}") ama NEXT_PUBLIC_SITE_URL okunamıyor.\n` +
+        "   Tam adres yaz: https://" + canonicalHost,
+    );
+  } else if (siteHost !== canonicalHost) {
+    problems.push(
+      `CANONICAL_HOST ("${canonicalHost}") ile NEXT_PUBLIC_SITE_URL adresi ("${siteHost}") farklı.\n` +
+        "   İkisi AYNI alan adını göstermeli. CANONICAL_HOST yönlendirmenin hedefi,\n" +
+        "   NEXT_PUBLIC_SITE_URL ise e-postalarda ve sitemap'te yazan adrestir.",
+    );
+  }
+}
+
 /* 2) Üretimde olması beklenen ama zorunlu olmayanlar ---------------------- */
 
 if (isProduction) {
   if (!process.env.NEXT_PUBLIC_SITE_URL) {
     warnings.push("NEXT_PUBLIC_SITE_URL boş — e-postalardaki ve SEO etiketlerindeki adresler yanlış olur.");
   }
+
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
     warnings.push(
       "SMTP ayarlı değil — yönetici girişindeki 6 haneli doğrulama kodu e-postayla GİTMEZ.\n" +
