@@ -12,12 +12,15 @@ export default function CartSummary({
   freeShippingThreshold,
   remainingForFreeShipping,
   grandTotal,
+  isLoggedIn,
 }: {
   subtotal: number;
   shippingTotal: number;
   freeShippingThreshold: number;
   remainingForFreeShipping: number;
   grandTotal: number;
+  /** Sipariş yalnızca üyelerden alınır; düğme buna göre değişir. */
+  isLoggedIn: boolean;
 }) {
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState<{
@@ -147,16 +150,32 @@ export default function CartSummary({
           </div>
         </dl>
 
+        {/*
+          Giriş yapılmamışsa müşteriyi ödeme sayfasına gönderip orada
+          geri çevirmek yerine doğrudan girişe alıyoruz: ne olacağını
+          önceden söylemek, tıkladıktan sonra sürpriz yaşatmaktan iyidir.
+          Sepet çerezde durduğu için giriş sonrası kaybolmaz.
+        */}
         <Link
-          href={applied ? `/odeme?kupon=${encodeURIComponent(applied.code)}` : "/odeme"}
+          href={
+            isLoggedIn
+              ? applied
+                ? `/odeme?kupon=${encodeURIComponent(applied.code)}`
+                : "/odeme"
+              : `/giris?next=${encodeURIComponent(
+                  applied ? `/odeme?kupon=${applied.code}` : "/odeme",
+                )}`
+          }
           className="btn-primary mt-5 w-full"
         >
           <Lock size={14} strokeWidth={1.5} />
-          Ödemeye Geç
+          {isLoggedIn ? "Ödemeye Geç" : "Giriş Yap ve Devam Et"}
         </Link>
 
         <p className="mt-3 text-center text-[11.5px] text-[color:var(--color-muted)]">
-          Ödeme sayfasında kart bilgileriniz 3D Secure ile korunur.
+          {isLoggedIn
+            ? "Ödeme sayfasında kart bilgileriniz 3D Secure ile korunur."
+            : "Sipariş verebilmek için üyelik gerekiyor. Sepetin kaybolmaz."}
         </p>
       </div>
 

@@ -1,5 +1,26 @@
+import type { Metadata } from "next";
 import { getActiveSections, ensureDefaultSections } from "@/lib/home";
+import { getSettings } from "@/lib/settings";
 import SectionRenderer from "@/components/shop/sections/SectionRenderer";
+
+/**
+ * Ana sayfanın başlığı panelden gelir ve başlık ŞABLONUNA girmez
+ * (`absolute`): şablon "%s | Alenora" olduğu için ana sayfada
+ * "Alenora | Alenora" gibi bir başlık çıkardı.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  const title = settings.seo_home_title || settings.site_name || "Alenora";
+  const description =
+    settings.seo_home_description || settings.seo_default_description || undefined;
+
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: "/" },
+    openGraph: { title, description, url: "/" },
+  };
+}
 
 /**
  * ANA SAYFA

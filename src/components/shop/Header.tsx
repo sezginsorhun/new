@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { getCategoryTree } from "@/lib/catalog";
+import { buildMenu, parseMenuOverride } from "@/lib/menu";
 import { getCartTotals } from "@/lib/cart";
 import { getSession } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
@@ -36,8 +37,13 @@ export default async function Header() {
    * başlık rahat durur. Fazlası "Diğer" açılır listesine düşer.
    */
   const MAX_INLINE_CATEGORIES = 7;
-  const inlineCategories = tree.slice(0, MAX_INLINE_CATEGORIES);
-  const overflowCategories = tree.slice(MAX_INLINE_CATEGORIES);
+  /*
+   * Menü kategorilerden otomatik oluşur; paneldeki düzenlemeler
+   * (gizle / sırala / yeniden adlandır / özel bağlantı) üzerine uygulanır.
+   */
+  const menu = buildMenu(tree, parseMenuOverride(settings.menu_overrides));
+  const inlineCategories = menu.slice(0, MAX_INLINE_CATEGORIES);
+  const overflowCategories = menu.slice(MAX_INLINE_CATEGORIES);
 
   return (
     <header className="sticky top-0 z-40 bg-white">
@@ -52,7 +58,7 @@ export default async function Header() {
       <div className="border-b border-[color:var(--color-line)]">
         <div className="container-page">
           <div className="flex h-[62px] items-center gap-3">
-            <MobileMenu tree={tree} isLoggedIn={Boolean(session)} />
+            <MobileMenu menu={menu} isLoggedIn={Boolean(session)} />
 
             {/* Logo */}
             <Link href="/" className="shrink-0" aria-label="Ana sayfa">
@@ -75,12 +81,14 @@ export default async function Header() {
             {/* Masaüstü menü */}
             <nav className="ml-5 hidden items-stretch lg:flex" aria-label="Ana menü">
               {inlineCategories.map((parent) => (
-                <div key={parent.id} className="group relative flex items-center">
+                <div key={parent.key} className="group relative flex items-center">
                   <Link
-                    href={`/kategori/${parent.slug}`}
-                    className="px-3 py-3 text-[12.5px] font-semibold tracking-[-0.01em] transition-colors hover:text-[color:var(--color-brand)]"
+                    href={parent.href}
+                    className={`px-3 py-3 text-[12.5px] font-semibold tracking-[-0.01em] transition-colors hover:text-[color:var(--color-brand)] ${
+                      parent.highlight ? "text-[color:var(--color-brand)]" : ""
+                    }`}
                   >
-                    {parent.name}
+                    {parent.label}
                   </Link>
 
                   {parent.children.length > 0 && (
@@ -89,19 +97,19 @@ export default async function Header() {
                         <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
                           {parent.children.map((child) => (
                             <Link
-                              key={child.id}
-                              href={`/kategori/${child.slug}`}
+                              key={child.href}
+                              href={child.href}
                               className="py-1.5 text-[13px] text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
                             >
-                              {child.name}
+                              {child.label}
                             </Link>
                           ))}
                         </div>
                         <Link
-                          href={`/kategori/${parent.slug}`}
+                          href={parent.href}
                           className="mt-5 inline-block border-t border-[color:var(--color-line)] pt-4 text-[12px] font-semibold"
                         >
-                          Tüm {parent.name} ürünleri →
+                          Tüm {parent.label} ürünleri →
                         </Link>
                       </div>
                     </div>
@@ -125,20 +133,22 @@ export default async function Header() {
                     <div className="border border-[color:var(--color-line)] border-t-0 bg-white p-6">
                       <div className="grid grid-cols-2 gap-x-8 gap-y-5">
                         {overflowCategories.map((parent) => (
-                          <div key={parent.id}>
+                          <div key={parent.key}>
                             <Link
-                              href={`/kategori/${parent.slug}`}
-                              className="block text-[12.5px] font-semibold"
+                              href={parent.href}
+                              className={`block text-[12.5px] font-semibold ${
+                                parent.highlight ? "text-[color:var(--color-brand)]" : ""
+                              }`}
                             >
-                              {parent.name}
+                              {parent.label}
                             </Link>
                             {parent.children.map((child) => (
                               <Link
-                                key={child.id}
-                                href={`/kategori/${child.slug}`}
+                                key={child.href}
+                                href={child.href}
                                 className="block py-1 text-[13px] text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
                               >
-                                {child.name}
+                                {child.label}
                               </Link>
                             ))}
                           </div>

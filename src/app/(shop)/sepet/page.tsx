@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ShoppingBag } from "lucide-react";
 import { getCartTotals } from "@/lib/cart";
+import { getSession } from "@/lib/auth";
 import CartLines from "@/components/shop/CartLines";
 import CartSummary from "@/components/shop/CartSummary";
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
-  const cart = await getCartTotals();
+  const [cart, session] = await Promise.all([getCartTotals(), getSession()]);
 
   if (cart.lines.length === 0) {
     return (
@@ -49,6 +50,7 @@ export default async function CartPage() {
           freeShippingThreshold={cart.freeShippingThreshold}
           remainingForFreeShipping={cart.remainingForFreeShipping}
           grandTotal={cart.grandTotal}
+          isLoggedIn={Boolean(session)}
         />
       </div>
     </div>

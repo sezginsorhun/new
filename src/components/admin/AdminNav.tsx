@@ -20,6 +20,8 @@ import {
   Tag,
   UserCog,
   Palette,
+  ListTree,
+  Search,
   Users,
 } from "lucide-react";
 
@@ -40,6 +42,8 @@ const ICONS = {
   Settings,
   UserCog,
   Palette,
+  ListTree,
+  Search,
 } as const;
 
 /**
@@ -77,6 +81,7 @@ const GROUPS: {
     title: "Görünüm",
     items: [
       { href: adminUrl("anasayfa"), label: "Ana Sayfa Düzeni", icon: "LayoutTemplate", permission: "content.manage" },
+      { href: adminUrl("menu"), label: "Menü", icon: "ListTree", permission: "content.manage" },
       { href: adminUrl("tema"), label: "Tema", icon: "Palette", permission: "content.manage" },
       { href: adminUrl("bannerlar"), label: "Carousel", icon: "ImageIcon", permission: "content.manage" },
       { href: adminUrl("medya"), label: "Medya", icon: "Images", permission: "content.manage" },
@@ -95,6 +100,7 @@ const GROUPS: {
     items: [
       { href: adminUrl("hesabim"), label: "Hesabım", icon: "UserCog" },
       { href: adminUrl("ayarlar"), label: "Ayarlar", icon: "Settings", permission: "settings.manage" },
+      { href: adminUrl("seo"), label: "SEO", icon: "Search", permission: "settings.manage" },
       { href: adminUrl("guvenlik"), label: "Güvenlik", icon: "ShieldCheck", permission: "security.view" },
     ],
   },

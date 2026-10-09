@@ -154,6 +154,18 @@ async function CategoriesSection({ section }: { section: HomeSection }) {
   const ratio =
     config.shape === "square" ? "1 / 1" : config.shape === "wide" ? "4 / 3" : "3 / 4";
 
+  /*
+   * KART STİLİ
+   * Görsel üstte, altında büyük başlık ve bir düğme. Az sayıda kutuyla
+   * (2-4) vitrinin girişinde yön gösterici olarak kullanılır.
+   *
+   * Düğme ayrı bir <a> DEĞİL: tüm kutu zaten bağlantı. İç içe bağlantı
+   * geçersiz HTML'dir ve ekran okuyucuda aynı hedefi iki kez okutur.
+   * Düğme görünümlü bir <span> yeterli.
+   */
+  const isCard = config.tileStyle === "card";
+  const buttonLabel = config.tileButtonLabel?.trim() || "Alışverişe başla";
+
   return (
     <section className={`${backgroundClass(config)} py-12 lg:py-16`}>
       <div className="container-page">
@@ -163,7 +175,7 @@ async function CategoriesSection({ section }: { section: HomeSection }) {
           ctaLabel={config.ctaLabel}
           ctaHref={config.ctaHref}
         />
-        <div className={`grid gap-2.5 ${gridClass}`}>
+        <div className={`grid ${isCard ? "gap-4 sm:gap-5" : "gap-2.5"} ${gridClass}`}>
           {list.map((category) => (
             <Link key={category.id} href={`/kategori/${category.slug}`} className="group block">
               <div
@@ -175,15 +187,34 @@ async function CategoriesSection({ section }: { section: HomeSection }) {
                     src={category.imageUrl}
                     alt=""
                     fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 17vw"
+                    sizes={
+                      isCard
+                        ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 17vw"
+                    }
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
-                <span className="absolute inset-x-3 bottom-3 text-[13px] font-semibold text-white">
-                  {category.name}
-                </span>
+                {!isCard && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+                    <span className="absolute inset-x-3 bottom-3 text-[13px] font-semibold text-white">
+                      {category.name}
+                    </span>
+                  </>
+                )}
               </div>
+
+              {isCard && (
+                <div className="bg-[color:var(--color-surface-2)] px-4 py-6 text-center">
+                  <h3 className="text-[26px] font-bold uppercase leading-none tracking-[-0.01em] text-[color:var(--color-brand)] sm:text-[30px]">
+                    {category.name}
+                  </h3>
+                  <span className="mt-4 inline-block bg-[color:var(--color-brand)] px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-white transition-colors group-hover:bg-[color:var(--color-brand-dark)]">
+                    {buttonLabel}
+                  </span>
+                </div>
+              )}
             </Link>
           ))}
         </div>

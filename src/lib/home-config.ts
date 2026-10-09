@@ -33,6 +33,15 @@ export type SectionConfig = {
   categorySlug?: string;
   columns?: number;
   shape?: "square" | "portrait" | "wide";
+  /**
+   * Kategori kutusunun görünümü.
+   *   overlay → görselin üstüne küçük yazı (varsayılan, yer kaplamaz)
+   *   card    → görsel üstte, altında büyük başlık ve bir düğme
+   * "card" az sayıda kutu için uygundur (2-4); altı kutuyla sayfa uzar.
+   */
+  tileStyle?: "overlay" | "card";
+  /** card stilinde kutunun altındaki düğme yazısı */
+  tileButtonLabel?: string;
 
   /* products */
   limit?: number;

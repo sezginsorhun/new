@@ -84,6 +84,32 @@ export const DEFAULT_SETTINGS = {
   theme_font_scale: "100",
   /** Serbest CSS. Boşsa hiçbir şey basılmaz. */
   custom_css: "",
+
+  /* --- SEO (Sistem → SEO) -------------------------------------------------
+   * Sekme başlığı ve arama sonucu açıklamaları buradan yönetilir.
+   * Başlık şablonundaki %s, sayfanın kendi başlığıyla değişir.
+   */
+  seo_title_template: "%s | Alenora",
+  /** Ana sayfanın başlığı — şablona GİRMEZ, olduğu gibi kullanılır. */
+  seo_home_title: "Alenora — Yetişkin Ürünleri ve İç Giyim",
+  seo_home_description:
+    "Cinsel sağlık ürünleri, çift ürünleri ve iç giyim. Gizli ve isimsiz paketle gönderim, 750 TL üzeri ücretsiz kargo.",
+  /** Kendi açıklaması olmayan sayfalarda kullanılır. */
+  seo_default_description:
+    "Alenora — yetişkin ürünleri ve iç giyim. Gizli paketle hızlı gönderim.",
+  /** Sosyal medyada paylaşılınca görünen görsel (1200x630 önerilir) */
+  seo_og_image: "",
+  /** "1" ise arama motorları siteyi dizine ekler. Kapatmak siteyi Google'dan düşürür. */
+  seo_index: "1",
+  /** Google Search Console doğrulama etiketi (sadece içerik kısmı) */
+  seo_google_verification: "",
+
+  /* --- Menü (Görünüm → Menü) ---------------------------------------------
+   * Menü kategorilerden otomatik oluşur; buradaki JSON yalnızca üzerine
+   * uygulanan düzenlemelerdir (gizle / sırala / yeniden adlandır / özel
+   * bağlantı). Boşsa menü tamamen otomatiktir. bkz. src/lib/menu.ts
+   */
+  menu_overrides: "",
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;

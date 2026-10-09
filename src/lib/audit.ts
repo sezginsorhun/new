@@ -49,6 +49,8 @@ export type AuditAction =
   | "settings.update"
   | "theme.update"
   | "theme.reset"
+  | "seo.update"
+  | "menu.update"
   | "customer.update"
   | "review.moderate";
 

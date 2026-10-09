@@ -313,6 +313,26 @@ function SectionForm({
               <option value="wide">Yatay (4:3)</option>
             </select>
           </div>
+          <div>
+            <label className="label">Görünüm</label>
+            <select name="tileStyle" defaultValue={config.tileStyle ?? "overlay"} className="field">
+              <option value="overlay">Yazı görselin üstünde</option>
+              <option value="card">Kart — başlık ve düğme altta</option>
+            </select>
+            <p className="help mt-1">
+              Kart görünümü 2–4 kutuyla iyi durur; altı kutuyla sayfa uzar.
+            </p>
+          </div>
+          <div>
+            <label className="label">Düğme yazısı</label>
+            <input
+              name="tileButtonLabel"
+              defaultValue={config.tileButtonLabel ?? ""}
+              placeholder="Alışverişe başla"
+              className="field"
+            />
+            <p className="help mt-1">Yalnızca kart görünümünde görünür.</p>
+          </div>
         </div>
       )}
 

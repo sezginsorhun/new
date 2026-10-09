@@ -26,6 +26,7 @@ import {
   isValidColor,
   sanitizeCustomCss,
 } from "@/lib/theme";
+import type { CustomLink, MenuOverride } from "@/lib/menu";
 
 export type ContentState = { ok: boolean; message: string } | null;
 
@@ -431,4 +432,146 @@ export async function resetThemeAction(): Promise<ContentState> {
   updateTag(CACHE_TAGS.settings);
   revalidatePath("/", "layout");
   return { ok: true, message: "Tema varsayılana döndürüldü." };
+}
+
+/* -------------------------------- SEO ----------------------------------- */
+
+/**
+ * SİSTEM → SEO
+ *
+ * Sekme başlığı, arama sonucu açıklamaları ve paylaşım görseli.
+ * Dizine ekleme anahtarı tehlikeli olduğu için ayrı ele alınıyor:
+ * kapatmak siteyi aramalardan düşürür, bu yüzden denetim kaydına
+ * ayrıca yazılıyor.
+ */
+export async function saveSeoAction(
+  _prev: ContentState,
+  formData: FormData,
+): Promise<ContentState> {
+  await assertSameOrigin();
+  const admin = await requirePermission("settings.manage");
+
+  const text = (key: string, max: number) =>
+    String(formData.get(key) ?? "").trim().slice(0, max);
+
+  const template = text("seo_title_template", 120);
+  const entries: Record<string, string> = {
+    // Şablonda %s yoksa her sayfanın başlığı aynı olurdu — düzeltiyoruz.
+    seo_title_template: template.includes("%s") ? template : `%s | ${text("seo_home_title", 80) || "Alenora"}`,
+    seo_home_title: text("seo_home_title", 160),
+    seo_home_description: text("seo_home_description", 320),
+    seo_default_description: text("seo_default_description", 320),
+    seo_og_image: text("seo_og_image", 500),
+    seo_google_verification: text("seo_google_verification", 200),
+    seo_index: formData.get("seo_index") === "on" ? "1" : "0",
+  };
+
+  await setSettings(entries);
+  await logAudit({
+    action: "seo.update",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary:
+      entries.seo_index === "0"
+        ? "SEO güncellendi — DİZİNE EKLEME KAPATILDI"
+        : "SEO güncellendi",
+    meta: { keys: Object.keys(entries) },
+  });
+
+  updateTag(CACHE_TAGS.settings);
+  revalidatePath("/", "layout");
+
+  return entries.seo_index === "0"
+    ? {
+        ok: true,
+        message:
+          "Kaydedildi. DİKKAT: arama motorlarına kapatıldı — site Google sonuçlarından düşecek.",
+      }
+    : { ok: true, message: "SEO ayarları kaydedildi." };
+}
+
+/* -------------------------------- MENÜ ---------------------------------- */
+
+/**
+ * GÖRÜNÜM → MENÜ
+ *
+ * Form, her kategori için bir satır gönderir: görünür mü, sırası kaç,
+ * menüde hangi adla çıkacak. Ayrıca özel bağlantılar.
+ *
+ * Kaydedilen şey menünün KENDİSİ değil, otomatik menünün üzerine
+ * uygulanan düzenlemelerdir. Böylece yeni açılan bir kategori menüde
+ * kendiliğinden belirir — eklemeyi unutmak diye bir şey olmaz.
+ */
+export async function saveMenuAction(
+  _prev: ContentState,
+  formData: FormData,
+): Promise<ContentState> {
+  await assertSameOrigin();
+  const admin = await requirePermission("content.manage");
+
+  const slugs = formData.getAll("slug").map(String);
+
+  const hidden: string[] = [];
+  const labels: Record<string, string> = {};
+  const sıralı: { slug: string; order: number }[] = [];
+
+  for (const slug of slugs) {
+    if (formData.get(`gorunur_${slug}`) !== "on") hidden.push(slug);
+
+    const label = String(formData.get(`ad_${slug}`) ?? "").trim().slice(0, 60);
+    const original = String(formData.get(`asil_${slug}`) ?? "").trim();
+    // Kategori adıyla aynıysa override YAZMIYORUZ: kategori adı
+    // değiştiğinde menü de kendiliğinden güncellensin.
+    if (label && label !== original) labels[slug] = label;
+
+    const order = Number(formData.get(`sira_${slug}`));
+    sıralı.push({ slug, order: Number.isFinite(order) ? order : 999 });
+  }
+
+  const order = sıralı.sort((a, b) => a.order - b.order).map((item) => item.slug);
+
+  const custom: CustomLink[] = [];
+  for (let index = 0; index < 6; index++) {
+    const label = String(formData.get(`ozel_ad_${index}`) ?? "").trim().slice(0, 40);
+    const href = String(formData.get(`ozel_url_${index}`) ?? "").trim().slice(0, 200);
+    if (!label || !href) continue;
+    // Yalnızca site içi yollar ve tam adresler; "javascript:" gibi şeyler girmesin.
+    if (!href.startsWith("/") && !/^https?:\/\//i.test(href)) continue;
+    custom.push({
+      label,
+      href,
+      position: formData.get(`ozel_bas_${index}`) === "on" ? "start" : "end",
+      highlight: formData.get(`ozel_vurgu_${index}`) === "on",
+    });
+  }
+
+  const payload: MenuOverride = { hidden, order, labels, custom };
+  await setSettings({ menu_overrides: JSON.stringify(payload) });
+
+  await logAudit({
+    action: "menu.update",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary: `Menü güncellendi — ${hidden.length} gizli, ${custom.length} özel bağlantı`,
+  });
+
+  updateTag(CACHE_TAGS.settings);
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Menü kaydedildi." };
+}
+
+/** Menüyü tamamen otomatik haline döndürür. */
+export async function resetMenuAction(): Promise<ContentState> {
+  await assertSameOrigin();
+  const admin = await requirePermission("content.manage");
+  await setSettings({ menu_overrides: "" });
+  await logAudit({
+    action: "menu.update",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary: "Menü otomatik haline döndürüldü",
+  });
+  updateTag(CACHE_TAGS.settings);
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Menü otomatik haline döndü." };
 }

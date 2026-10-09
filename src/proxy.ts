@@ -21,7 +21,13 @@ import { ADMIN_PATH, isAdminPath, toInternalAdminPath } from "@/lib/admin-path";
 import { clientIpFromHeaders, isAllowedAdminIp } from "@/lib/ip-allowlist";
 import { canEnterPanel } from "@/lib/permissions";
 
-const PROTECTED_CUSTOMER = ["/hesabim"];
+/*
+ * Giriş yapılmadan açılamayan müşteri yolları.
+ * /odeme buradadır: sipariş yalnızca üyelerden alınır. Burası hızlı ön
+ * kontroldür (yalnızca çereze bakar); asıl kapı sayfanın kendi
+ * getCurrentUser() kontrolü ve sunucu eylemidir.
+ */
+const PROTECTED_CUSTOMER = ["/hesabim", "/odeme"];
 
 async function readToken(token: string | undefined) {
   if (!token) return null;

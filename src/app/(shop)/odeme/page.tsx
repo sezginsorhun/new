@@ -27,6 +27,19 @@ export default async function CheckoutPage(props: PageProps<"/odeme">) {
 
   if (cart.lines.length === 0) redirect("/sepet");
 
+  /*
+   * ÜYELİK ZORUNLU
+   * Sipariş yalnızca üyelerden alınır. Sepet çerezde durduğu için
+   * giriş sonrası müşteri kaldığı yerden devam eder, ürünleri kaybetmez.
+   * Proxy de bu yolu koruyor; buradaki kontrol asıl olanıdır — proxy
+   * sadece çereze bakar, bu ise kullanıcının gerçekten var olduğunu
+   * veritabanından doğrular.
+   */
+  if (!user) {
+    const next = couponCode ? `/odeme?kupon=${encodeURIComponent(couponCode)}` : "/odeme";
+    redirect(`/giris?next=${encodeURIComponent(next)}`);
+  }
+
   const savedAddresses = user
     ? await db
         .select()

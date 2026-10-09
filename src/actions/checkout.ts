@@ -142,7 +142,19 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
   const totals = await getCartTotals(base.data.couponCode ?? null);
   if (totals.lines.length === 0) return { ok: false, error: "Sepetin boş." };
 
+  /*
+   * ÜYELİK ZORUNLU — son kapı.
+   * Sayfa ve proxy de engelliyor; burası doğrudan bu eyleme istek
+   * gönderen birine karşı. Üç katmanın da aynı kuralı uygulaması
+   * gerekir, yoksa en dıştaki kapı atlanınca sipariş geçer.
+   */
   const user = await getCurrentUser();
+  if (!user) {
+    return {
+      ok: false,
+      error: "Sipariş verebilmek için giriş yapman gerekiyor.",
+    };
+  }
 
   /* 5) Kart dışı ödemeler: siparişi doğrudan oluştur */
   if (paymentMethod !== "CREDIT_CARD") {

@@ -208,6 +208,8 @@ export async function saveSectionAction(
       config.limit = Math.min(Math.max(num("limit", 6), 1), 24);
       config.columns = num("columns", 6);
       config.shape = (str("shape") || "portrait") as SectionConfig["shape"];
+      config.tileStyle = (str("tileStyle") === "card" ? "card" : "overlay") as SectionConfig["tileStyle"];
+      config.tileButtonLabel = str("tileButtonLabel") || undefined;
       config.ctaLabel = str("ctaLabel") || undefined;
       config.ctaHref = safeUrl(str("ctaHref")) ?? undefined;
       config.background = (str("background") || "white") as SectionConfig["background"];
