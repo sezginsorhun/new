@@ -545,7 +545,12 @@ export async function getBestsellerProducts(limit = 8) {
     })
     .from(products)
     .where(eq(products.isActive, true))
-    .orderBy(desc(products.soldCount), desc(products.viewCount))
+    /*
+     * Önce panelden "çok satan" diye işaretlenenler, sonra gerçek satış
+     * adedi. Yeni mağazada sold_count herkeste sıfır olduğu için yalnızca
+     * ona bakmak bölümü rastgele gösteriyordu.
+     */
+    .orderBy(desc(products.isBestseller), desc(products.soldCount), desc(products.viewCount))
     .limit(limit);
   return decorateProducts(rows);
 }

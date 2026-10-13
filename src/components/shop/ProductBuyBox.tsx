@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Heart, Minus, Plus, Ruler, ShoppingBag, Truck } from "lucide-react";
 import type { ProductVariant } from "@/db/schema";
@@ -223,6 +224,22 @@ export default function ProductBuyBox({
           </div>
         )}
 
+        {/*
+          HİÇ SEÇENEĞİ OLMAYAN ÜRÜN
+          Stok ve sepet kaydı varyanta bağlıdır; varyantı olmayan ürün
+          satın alınamaz. Çalışmayan bir "Sepete Ekle" düğmesi göstermek
+          yerine durumu açıkça söylüyoruz — müşteri boşuna denemesin.
+        */}
+        {variants.length === 0 ? (
+          <div className="mt-7 border border-[color:var(--color-line)] bg-[color:var(--color-surface-2)] p-4 text-[13px]">
+            Bu ürün şu an satışta değil.
+            <Link href="/iletisim" className="ml-1 link-underline">
+              Bize ulaş
+            </Link>
+            , ne zaman geleceğini söyleyelim.
+          </div>
+        ) : (
+        <>
         {/* Adet + Sepete ekle */}
         <div className="mt-7 flex gap-3">
           <div className="flex items-center border border-[color:var(--color-line-strong)] bg-white">
@@ -285,6 +302,8 @@ export default function ProductBuyBox({
             {feedback.ok && <Check size={14} strokeWidth={2} />}
             {feedback.text}
           </p>
+        )}
+        </>
         )}
 
         {/* Kargo bilgisi */}

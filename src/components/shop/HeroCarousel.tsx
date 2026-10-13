@@ -106,6 +106,21 @@ export default function HeroCarousel({
       {slides.map((slide, i) => {
         const active = i === index;
         const dark = slide.theme === "dark";
+        /*
+         * SADECE GÖRSEL OLAN SLAYT
+         * Başlık, alt başlık, üst yazı ve iki butonun hepsi boşsa slaytta
+         * tıklanacak hiçbir şey kalmaz; görsel bir yere götürmesi gereken
+         * bir afiştir ama ölü durur. Böyle bir slaytta görselin TAMAMI
+         * bağlantı olur. Metin ya da buton varsa buraya hiç girilmez —
+         * mevcut davranış aynen korunur, iç içe bağlantı da oluşmaz.
+         */
+        const sadeceGorsel =
+          !slide.eyebrow &&
+          !slide.title &&
+          !slide.subtitle &&
+          !slide.buttonLabel &&
+          !slide.secondaryLabel;
+        const gorselBaglantisi = sadeceGorsel ? slide.linkUrl : null;
         const alignClass =
           slide.align === "center"
             ? "items-center text-center"
@@ -156,9 +171,23 @@ export default function HeroCarousel({
               }}
             />
 
-            <div className="relative flex h-full items-center">
+            {/*
+              Görsel bağlantısı okların ve noktaların ALTINDA kalır (z-10 /
+              z-20 onlarda): slayt değiştirme düğmeleri bağlantının altında
+              kalıp tıklanamaz hale gelmesin.
+            */}
+            {gorselBaglantisi && (
+              <Link
+                href={gorselBaglantisi}
+                aria-label={slide.imageAlt ?? "Slaytı aç"}
+                tabIndex={active ? 0 : -1}
+                className="absolute inset-0 z-[1]"
+              />
+            )}
+
+            <div className="pointer-events-none relative flex h-full items-center">
               <div className="container-page">
-                <div className={`flex max-w-[520px] flex-col ${alignClass} ${
+                <div className={`pointer-events-auto flex max-w-[520px] flex-col ${alignClass} ${
                   slide.align === "center" ? "mx-auto" : slide.align === "right" ? "ml-auto" : ""
                 }`}>
                   {slide.eyebrow && (
@@ -229,7 +258,7 @@ export default function HeroCarousel({
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Önceki slayt"
-            className="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[color:var(--color-ink)] transition hover:bg-white sm:flex"
+            className="absolute left-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[color:var(--color-ink)] transition hover:bg-white sm:flex"
           >
             <ChevronLeft size={20} strokeWidth={1.5} />
           </button>
@@ -237,7 +266,7 @@ export default function HeroCarousel({
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Sonraki slayt"
-            className="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[color:var(--color-ink)] transition hover:bg-white sm:flex"
+            className="absolute right-3 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[color:var(--color-ink)] transition hover:bg-white sm:flex"
           >
             <ChevronRight size={20} strokeWidth={1.5} />
           </button>
@@ -245,7 +274,7 @@ export default function HeroCarousel({
       )}
 
       {showDots && count > 1 && (
-        <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
+        <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
           {slides.map((slide, i) => (
             <button
               key={slide.id}

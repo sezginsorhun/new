@@ -41,6 +41,7 @@ const productSchema = z.object({
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isNew: z.boolean().default(false),
+  isBestseller: z.boolean().default(false),
 });
 
 function readProductForm(formData: FormData) {
@@ -63,6 +64,7 @@ function readProductForm(formData: FormData) {
     isActive: formData.get("isActive") === "on",
     isFeatured: formData.get("isFeatured") === "on",
     isNew: formData.get("isNew") === "on",
+    isBestseller: formData.get("isBestseller") === "on",
   };
 }
 
@@ -104,6 +106,7 @@ export async function saveProductAction(
     isActive: parsed.data.isActive,
     isFeatured: parsed.data.isFeatured,
     isNew: parsed.data.isNew,
+    isBestseller: parsed.data.isBestseller,
     updatedAt: new Date(),
   };
 
@@ -128,6 +131,40 @@ export async function saveProductAction(
       return { ok: false, message: "Bu ürün kodu (SKU) başka bir üründe kullanılıyor." };
     }
     return { ok: false, message: "Kaydedilemedi: " + message.slice(0, 160) };
+  }
+
+  /*
+   * VARSAYILAN SEÇENEK
+   *
+   * Stok, sepet ve sipariş kaydının tamamı VARYANTA bağlıdır: varyantı
+   * olmayan bir ürün stok ekranında hiç görünmez ve sepete eklenemez —
+   * panelde sapasağlam dururken müşteri tarafında satın alınamaz.
+   * Bu sessiz tuzağı kapatmak için, varyantı olmayan her üründe tek bir
+   * "Tek seçenek / Standart" varyantı açıyoruz. Beden ya da renk
+   * gerekiyorsa yönetici bunun yerine kendi varyantlarını ekler.
+   *
+   * Stok sıfır başlar: var olmayan bir stoğu "var" diye göstermek,
+   * satılamayacak bir siparişe yol açar.
+   */
+  if (productId) {
+    const mevcut = await db
+      .select({ id: productVariants.id })
+      .from(productVariants)
+      .where(eq(productVariants.productId, productId))
+      .limit(1);
+
+    if (mevcut.length === 0) {
+      await db.insert(productVariants).values({
+        id: createId(),
+        productId,
+        sku: `${values.sku}-STD`,
+        size: "Tek seçenek",
+        colorName: "Standart",
+        colorHex: "#b9a69c",
+        stock: 0,
+        sortOrder: 0,
+      });
+    }
   }
 
   // Kategori bağlantılarını yenile
@@ -452,4 +489,60 @@ export async function generateVariantsAction(
 
   revalidatePath(`/admin/urunler/${productId}`);
   return { ok: true, message: `${created} varyant oluşturuldu.` };
+}
+
+/* --------------------- VARYANTSIZ ÜRÜNLERİ ONAR ------------------------- */
+
+/**
+ * Varyantı olmayan ürünlere tek bir varsayılan seçenek açar.
+ *
+ * Neden gerekli: stok, sepet ve sipariş kaydı varyanta bağlıdır. Varyantı
+ * olmayan ürün Stok Durumu ekranında hiç görünmez ve müşteri sepete
+ * ekleyemez — panelde sapasağlam durduğu için fark edilmesi zordur.
+ *
+ * Yeni kaydedilen ürünlerde bu varyant zaten kendiliğinden açılıyor; bu
+ * eylem, o düzeltmeden ÖNCE oluşturulmuş ürünleri toparlamak için.
+ */
+export async function createMissingVariantsAction(): Promise<AdminState> {
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+
+  const eksik = await db
+    .select({ id: products.id, sku: products.sku, name: products.name })
+    .from(products)
+    .leftJoin(productVariants, eq(productVariants.productId, products.id))
+    .where(sql`${productVariants.id} is null`);
+
+  if (eksik.length === 0) {
+    return { ok: true, message: "Varyantı eksik ürün yok." };
+  }
+
+  for (const urun of eksik) {
+    await db.insert(productVariants).values({
+      id: createId(),
+      productId: urun.id,
+      // SKU benzersiz olmak zorunda; ürün kodu zaten benzersiz.
+      sku: `${urun.sku}-STD`,
+      size: "Tek seçenek",
+      colorName: "Standart",
+      colorHex: "#b9a69c",
+      stock: 0,
+      sortOrder: 0,
+    });
+  }
+
+  await logAudit({
+    action: "variant.update",
+    userId: admin.id,
+    actorEmail: admin.email,
+    summary: `${eksik.length} ürüne varsayılan seçenek açıldı`,
+    meta: { urunler: eksik.map((u) => u.name).slice(0, 20) },
+  });
+
+  revalidatePath("/admin/stok");
+  revalidatePath("/admin/urunler");
+  return {
+    ok: true,
+    message: `${eksik.length} ürüne varsayılan seçenek açıldı. Stoklarını girmen gerekiyor.`,
+  };
 }

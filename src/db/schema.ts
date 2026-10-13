@@ -189,6 +189,14 @@ export const products = mysqlTable(
     isActive: boolean("is_active").notNull().default(true),
     isFeatured: boolean("is_featured").notNull().default(false),
     isNew: boolean("is_new").notNull().default(false),
+    /**
+     * "Çok satan" işareti — ELLE verilir.
+     * Satış adedi (soldCount) yeni mağazada herkeste sıfır olduğu için
+     * ana sayfadaki Çok satanlar bölümü rastgele görünürdü. İşaretli
+     * ürünler listenin başında gelir; kalan yerleri gerçek satış adedi
+     * doldurur.
+     */
+    isBestseller: boolean("is_bestseller").notNull().default(false),
 
     weightGr: int("weight_gr"), // kargo hesabı için gram
 

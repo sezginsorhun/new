@@ -298,6 +298,21 @@ export default function ProductForm({
             />
             &quot;Yeni&quot; etiketi göster
           </label>
+          <label className="flex cursor-pointer items-start gap-2.5 text-[13px]">
+            <input
+              type="checkbox"
+              name="isBestseller"
+              defaultChecked={product?.isBestseller ?? false}
+              className="mt-0.5 h-4 w-4 accent-[color:var(--color-brand)]"
+            />
+            <span>
+              Anasayfada &quot;çok satanlar&quot; bölümünde göster
+              <span className="block text-[12px] text-[color:var(--color-muted)]">
+                İşaretli ürünler listenin başında gelir; kalan yerleri gerçek
+                satış adedi doldurur.
+              </span>
+            </span>
+          </label>
         </div>
       </div>
 

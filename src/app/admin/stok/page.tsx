@@ -2,10 +2,11 @@ import { adminUrl } from "@/lib/admin-path";
 import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { and, asc, eq, like, or, sql } from "drizzle-orm";
-import { Search } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 import { db } from "@/db";
 import { productVariants, products } from "@/db/schema";
 import StockRow from "@/components/admin/StockRow";
+import MissingVariantsFixer from "@/components/admin/MissingVariantsFixer";
 
 export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
   await requirePermission("stock.manage");
@@ -52,6 +53,21 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
    * hatası verir. MySQL'de koşullu sayım `sum(case when ... then 1 else 0 end)`
    * ile yapılır — her iki veritabanında da çalışan yazım budur.
    */
+  /*
+   * VARYANTI OLMAYAN ÜRÜNLER
+   *
+   * Bu ekran varyant listeler; varyantı olmayan bir ürün burada HİÇ
+   * görünmez. Ürünler ekranında dururken burada olmaması, "stok neden
+   * görünmüyor" sorusunun cevabıdır — üstelik o ürün sepete de eklenemez.
+   * Bu yüzden sessizce atlamak yerine ayrıca uyarıyoruz.
+   */
+  const varyantsiz = await db
+    .select({ id: products.id, name: products.name, slug: products.slug })
+    .from(products)
+    .leftJoin(productVariants, eq(productVariants.productId, products.id))
+    .where(and(eq(products.isActive, true), sql`${productVariants.id} is null`))
+    .limit(50);
+
   const totals = await db
     .select({
       totalStock: sql<number>`coalesce(sum(${productVariants.stock}),0)`,
@@ -67,6 +83,40 @@ export default async function AdminStockPage(props: PageProps<"/admin/stok">) {
         Toplam {totals[0]?.totalStock ?? 0} adet · {totals[0]?.lowStock ?? 0} kritik ·{" "}
         {totals[0]?.outOfStock ?? 0} tükendi
       </p>
+
+      {varyantsiz.length > 0 && (
+        <div className="mb-5 border border-[color:var(--color-sale)] bg-red-50 p-4">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle
+              size={16}
+              strokeWidth={1.6}
+              className="mt-0.5 shrink-0 text-[color:var(--color-sale)]"
+            />
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold">
+                {varyantsiz.length} ürünün hiç seçeneği (varyantı) yok
+              </p>
+              <p className="mt-1 text-[12.5px] leading-relaxed">
+                Stok, sepet ve sipariş kaydı seçeneğe bağlıdır. Seçeneği
+                olmayan ürün bu listede görünmez ve <strong>müşteri sepete
+                ekleyemez</strong> — ürün panelde sapasağlam dursa bile.
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px]">
+                {varyantsiz.map((urun) => (
+                  <li key={urun.id}>
+                    <Link href={adminUrl(`urunler/${urun.id}`)} className="link-underline">
+                      {urun.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3">
+                <MissingVariantsFixer count={varyantsiz.length} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {[
