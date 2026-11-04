@@ -1,0 +1,53 @@
+# nilseraluminyum.com → Hostinger public_html (FTP)
+#
+# GitHub → Settings → Secrets and variables → Actions → New repository secret:
+#   NILSER_FTP_SERVER    hPanel → Dosyalar → FTP Hesapları → "FTP IP" / hostname
+#   NILSER_FTP_USERNAME  aynı ekrandaki kullanıcı adı
+#   NILSER_FTP_PASSWORD  FTP şifresi
+# İsteğe bağlı:
+#   NILSER_FTP_DIR       hedef klasör (varsayılan public_html/)
+name: Hostinger'a yükle
+
+on:
+  push:
+    branches: [main]
+    paths: ["nilser/**", ".github/workflows/hostinger-ftp.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: hostinger-ftp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ayarları kontrol et
+        env:
+          S: ${{ secrets.NILSER_FTP_SERVER }}
+          U: ${{ secrets.NILSER_FTP_USERNAME }}
+          P: ${{ secrets.NILSER_FTP_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$S" ] && missing="$missing NILSER_FTP_SERVER"
+          [ -z "$U" ] && missing="$missing NILSER_FTP_USERNAME"
+          [ -z "$P" ] && missing="$missing NILSER_FTP_PASSWORD"
+          if [ -n "$missing" ]; then echo "::error::Eksik GitHub secret:$missing"; exit 1; fi
+
+      - name: Siteyi derle (düz hosting sürümü)
+        run: node nilser/build.mjs
+
+      - name: public_html'e yükle
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.NILSER_FTP_SERVER }}
+          username: ${{ secrets.NILSER_FTP_USERNAME }}
+          password: ${{ secrets.NILSER_FTP_PASSWORD }}
+          local-dir: nilser/dist/
+          server-dir: ${{ secrets.NILSER_FTP_DIR || 'public_html/' }}
