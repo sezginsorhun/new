@@ -14,7 +14,15 @@ import * as D from "./src/data.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ROOT, "src");
-const OUT = join(ROOT, "dist");
+/*
+ * İki çıktı biçimi:
+ *   node build.mjs          → dist/   (düz hosting: .htaccess + iletisim.php)
+ *   node build.mjs --next   → ../public/ (Hostinger Node.js / Next.js uygulaması;
+ *                             form /api/teklif adresine gider)
+ */
+const NEXT = process.argv.includes("--next");
+const OUT = NEXT ? join(ROOT, "..", "public") : join(ROOT, "dist");
+const FORM_ACTION = NEXT ? "/api/teklif/" : "/iletisim.php";
 const { site } = D;
 const BUILD = Date.now().toString(36);
 
@@ -741,7 +749,7 @@ page({
       </div>
     </div>
 
-    <form class="quote" id="teklif-form" action="/iletisim.php" method="post" data-wa="${site.primaryPhone.wa}" data-types="${typesJson}" novalidate>
+    <form class="quote" id="teklif-form" action="${FORM_ACTION}" method="post" data-wa="${site.primaryPhone.wa}" data-types="${typesJson}" novalidate>
       <span id="teklif" style="position:relative;top:calc(-1 * var(--header) - 24px)"></span>
       <div class="quote__head" aria-hidden="true">
         <div class="quote__step"><b>1</b>Ürün</div>
@@ -891,7 +899,12 @@ for (const p of pages) {
 
 cpSync(join(SRC, "assets"), join(OUT, "assets"), { recursive: true });
 writeFileSync(join(OUT, "assets/main.js"), readFileSync(join(SRC, "main.js"), "utf8"));
-cpSync(join(ROOT, "public"), OUT, { recursive: true });
+cpSync(join(ROOT, "public"), OUT, {
+  recursive: true,
+  // Next.js modunda Apache/PHP dosyaları işe yaramaz
+  filter: (f) => !NEXT || !/(\.htaccess|iletisim\.php)$/.test(f),
+});
+if (NEXT) writeFileSync(join(OUT, "assets/site.css"), css);
 
 const today = new Date().toISOString().slice(0, 10);
 const indexable = pages.filter((p) => !p.noindex);
@@ -901,9 +914,9 @@ writeFileSync(
     .map((p) => `  <url><loc>${site.url}${p.path}</loc><lastmod>${today}</lastmod><priority>${p.path === "/" ? "1.0" : "0.8"}</priority></url>`)
     .join("\n")}\n</urlset>\n`
 );
-writeFileSync(join(OUT, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /iletisim.php\n\nSitemap: ${site.url}/sitemap.xml\n`);
+writeFileSync(join(OUT, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: ${FORM_ACTION}\n\nSitemap: ${site.url}/sitemap.xml\n`);
 
 const size = (f) => (readFileSync(f).length / 1024).toFixed(1) + " KB";
-console.log(`✓ ${pages.length} sayfa üretildi → dist/`);
+console.log(`✓ ${pages.length} sayfa üretildi → ${NEXT ? "public/ (Next.js)" : "dist/"}`);
 console.log(`  ana sayfa HTML: ${size(join(OUT, "index.html"))}, CSS (gömülü): ${(css.length / 1024).toFixed(1)} KB`);
-if (!existsSync(join(OUT, ".htaccess"))) console.warn("⚠ .htaccess bulunamadı");
+if (!NEXT && !existsSync(join(OUT, ".htaccess"))) console.warn("⚠ .htaccess bulunamadı");

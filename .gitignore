@@ -34,9 +34,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# panelden yüklenen görseller (kullanıcı verisi, depoya girmez)
-/public/uploads/*
-!/public/uploads/.gitkeep
+# public/ derlemede nilser/build.mjs tarafından üretilir
+/public/
 
 # vercel
 .vercel
