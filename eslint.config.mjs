@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ayrı statik site (nilseraluminyum.com) — kendi derleyicisi var
+    "nilser/**",
   ]),
 ]);
 
