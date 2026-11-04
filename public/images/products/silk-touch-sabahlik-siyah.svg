@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#2a2528"/>
+      <stop offset="100%" stop-color="#4a4247"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 350 C 190 260, 600 460, 900 320 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.18"/><path d="M0 450 C 240 360, 690 560, 900 420 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.27"/><path d="M0 590 C 290 500, 640 700, 900 560 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.36"/><path d="M0 730 C 220 640, 590 840, 900 700 L900 1200 L0 1200 Z"
+      fill="#4a4247" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#e9e2e5">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Silk Touch</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">SIYAH</text>
+  </g>
+</svg>

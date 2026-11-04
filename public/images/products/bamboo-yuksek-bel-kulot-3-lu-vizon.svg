@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#d4baa4"/>
+      <stop offset="100%" stop-color="#b6977d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 330 C 210 240, 640 440, 900 300 L900 1200 L0 1200 Z"
+      fill="#b6977d" opacity="0.18"/><path d="M0 450 C 240 360, 610 560, 900 420 L900 1200 L0 1200 Z"
+      fill="#b6977d" opacity="0.27"/><path d="M0 610 C 270 520, 580 720, 900 580 L900 1200 L0 1200 Z"
+      fill="#b6977d" opacity="0.36"/><path d="M0 730 C 180 640, 690 840, 900 700 L900 1200 L0 1200 Z"
+      fill="#b6977d" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#5c462f">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Bamboo Yüksek</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">VIZON</text>
+  </g>
+</svg>

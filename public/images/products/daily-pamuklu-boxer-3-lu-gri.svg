@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#aba4a0"/>
+      <stop offset="100%" stop-color="#8e8783"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.62">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#g)"/>
+  <path d="M0 348 C 240 258, 628 458, 900 318 L900 1200 L0 1200 Z"
+      fill="#8e8783" opacity="0.18"/><path d="M0 474 C 276 384, 592 584, 900 444 L900 1200 L0 1200 Z"
+      fill="#8e8783" opacity="0.27"/><path d="M0 600 C 192 510, 696 710, 900 570 L900 1200 L0 1200 Z"
+      fill="#8e8783" opacity="0.36"/><path d="M0 726 C 228 636, 660 836, 900 696 L900 1200 L0 1200 Z"
+      fill="#8e8783" opacity="0.45"/>
+  <rect width="900" height="1200" fill="url(#glow)"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle" fill="#3d3735">
+    <text x="450" y="556" font-size="46" letter-spacing="1">Daily Pamuklu</text>
+    <text x="450" y="606" font-size="20" letter-spacing="6" opacity="0.72"
+      font-family="-apple-system, Helvetica, Arial, sans-serif">GRI</text>
+  </g>
+</svg>
