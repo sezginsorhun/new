@@ -1,0 +1,45 @@
+# nilseraluminyum.com → Hostinger (FTP) otomatik dağıtım
+#
+# Gerekli GitHub Secrets (Settings → Secrets and variables → Actions):
+#   NILSER_FTP_SERVER    örn. ftp.nilseraluminyum.com   (hPanel → Dosyalar → FTP Hesapları)
+#   NILSER_FTP_USERNAME  örn. u123456789.nilseraluminyum.com
+#   NILSER_FTP_PASSWORD  FTP şifresi
+# İsteğe bağlı:
+#   NILSER_FTP_DIR       sunucudaki hedef klasör (varsayılan: public_html/)
+name: NİLSER sitesi → Hostinger
+
+on:
+  push:
+    branches: [main]
+    paths: ["nilser/**", ".github/workflows/nilser-deploy.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: nilser-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nilser
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Derle
+        run: node build.mjs
+
+      - name: Hostinger'a yükle (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.NILSER_FTP_SERVER }}
+          username: ${{ secrets.NILSER_FTP_USERNAME }}
+          password: ${{ secrets.NILSER_FTP_PASSWORD }}
+          local-dir: nilser/dist/
+          server-dir: ${{ secrets.NILSER_FTP_DIR || 'public_html/' }}
+          dangerous-clean-slate: false
