@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/teklif/
+
+Sitemap: https://nilseraluminyum.com/sitemap.xml
