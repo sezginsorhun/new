@@ -34,8 +34,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# public/ derlemede nilser/build.mjs tarafından üretilir
-/public/
+# public/ derlemede nilser/build.mjs tarafından yeniden üretilir; yine de depoda
+# tutulur ki barındırma derleme adımını farklı çalıştırsa bile sayfalar eksik kalmasın.
 
 # vercel
 .vercel
