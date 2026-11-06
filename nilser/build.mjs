@@ -191,7 +191,7 @@ function footer() {
       </div>
       <div>
         <h2>Koleksiyon</h2>
-        <ul>${D.collection.map((c) => `<li><a href="/${c.slug}/">${c.title}</a></li>`).join("")}</ul>
+        <ul>${D.collection.map((c) => `<li><a href="/${c.slug}/">${c.title}</a></li>`).join("")}<li><a href="/katalog/">Ürün kataloğu (PDF)</a></li></ul>
       </div>
       <div>
         <h2>İletişim</h2>
@@ -206,7 +206,6 @@ function footer() {
         <p style="margin-top:14px"><a class="link-arrow" href="${site.mapsUrl}" target="_blank" rel="noopener">Yol tarifi ${I.arrow}</a></p>
       </div>
     </div>
-    <div class="footer__big" aria-hidden="true">NİLSER</div>
     <div class="footer__bottom">
       <span>© ${year} ${site.legal}</span>
       <span><a href="/kvkk/">KVKK aydınlatma metni</a></span>
@@ -435,6 +434,21 @@ page({
     <ol class="steps">
       ${D.steps.map((s, i) => `<li class="step reveal" data-d="${i % 3}"><span class="num">${s.no}</span><div><h3>${s.title}</h3><p>${s.text}</p></div></li>`).join("")}
     </ol>
+  </div>
+</section>
+
+<section class="section bg-sand">
+  <div class="wrap catalog-teaser">
+    <a class="catalog-teaser__cover reveal" href="/katalog/" aria-label="Ürün kataloğunu görüntüle">${img("katalog-kapak", "NİLSER ürün kataloğu kapağı")}<span class="catalog-teaser__pages">${site.catalogPages} sayfa · PDF</span></a>
+    <div class="reveal" data-d="1">
+      <span class="eyebrow">Ürün kataloğu</span>
+      <h2 class="h2" style="margin:16px 0 22px">Koleksiyonun tamamı, tek dosyada.</h2>
+      <p class="lead">Sineklik, plise perde, cam balkon ve duşakabin sistemlerimizi; donanım, malzeme ve yerleşim notlarıyla birlikte inceleyin.</p>
+      <div class="hero__actions">
+        <a class="btn" href="/katalog/">Kataloğu görüntüle ${I.arrow}</a>
+        <a class="btn btn--ghost" href="${site.catalogPdf}" download>PDF indir</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -819,6 +833,46 @@ page({
     <p class="muted mt-m" style="font-size:13px">Nihai ölçü, renk, cam ve donanım; onaylanan teklif ve uygulama detaylarıyla belirlenir.</p>
   </div>
 </section>
+`,
+});
+
+/* KATALOG ------------------------------------------------------------ */
+page({
+  path: "/katalog/",
+  title: "Ürün kataloğu (PDF)",
+  description: "NİLSER Alüminyum ürün kataloğu: sineklik, plise perde, cam balkon ve duşakabin sistemleri. Online görüntüleyin veya PDF olarak indirin.",
+  ld: [breadcrumbLd([{ label: "Ürün kataloğu", href: "/katalog/" }])],
+  body: `
+<section class="page-hero" style="padding-bottom:clamp(28px,4vw,48px)">
+  <div class="wrap">
+    ${crumbs([{ label: "Ürün kataloğu" }])}
+    <div class="catalog-head">
+      <div>
+        <span class="eyebrow">Ürün kataloğu · ${site.catalogPages} sayfa</span>
+        <h1 class="h1" style="margin:18px 0 0">Koleksiyon rehberi</h1>
+      </div>
+      <div class="catalog-head__actions">
+        <a class="btn" href="${site.catalogPdf}" target="_blank" rel="noopener">Tam ekran aç ${I.arrow}</a>
+        <a class="btn btn--ghost" href="${site.catalogPdf}" download>PDF indir</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section--tight" style="padding-top:0">
+  <div class="wrap">
+    <div class="catalog-viewer">
+      <iframe src="${site.catalogPdf}#view=FitH&amp;pagemode=none" title="NİLSER ürün kataloğu (PDF)" loading="lazy"></iframe>
+      <a class="catalog-viewer__mobile" href="${site.catalogPdf}" target="_blank" rel="noopener">
+        ${img("katalog-kapak", "NİLSER ürün kataloğu kapağı", { eager: true })}
+        <span class="btn btn--gold">Kataloğu aç (PDF) ${I.arrow}</span>
+      </a>
+    </div>
+    <p class="muted mt-s" style="font-size:13px">Katalog görünmüyorsa <a href="${site.catalogPdf}" target="_blank" rel="noopener" style="text-decoration:underline">buradan açın</a> veya <a href="${site.catalogPdf}" download style="text-decoration:underline">indirin</a>.</p>
+  </div>
+</section>
+
+${ctaBand({ title: "Katalogda beğendiğinizi ölçelim.", text: "Seçtiğiniz sistem veya duşakabin modeli için yerinde keşif yapıp net teklif hazırlayalım." })}
 `,
 });
 

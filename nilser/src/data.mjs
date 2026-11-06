@@ -20,6 +20,8 @@ export const site = {
     "https://www.google.com/maps/search/?api=1&query=Alt%C4%B1nkale+Mah.+4218.+Sokak+No%3A19+D%C3%B6%C5%9Femealt%C4%B1+Antalya",
   mapsEmbed:
     "https://www.google.com/maps?q=Alt%C4%B1nkale+Mah.+4218.+Sokak+19+D%C3%B6%C5%9Femealt%C4%B1+Antalya&output=embed",
+  catalogPdf: "/assets/katalog/nilser-urun-katalogu.pdf",
+  catalogPages: 28,
   // WhatsApp ve "Hemen ara" butonlarının kullandığı ana hat
   primaryPhone: { label: "0536 448 17 25", tel: "+905364481725", wa: "905364481725" },
   contacts: [
@@ -33,6 +35,7 @@ export const nav = [
   { href: "/plise-perde/", label: "Plise perde" },
   { href: "/cam-balkon/", label: "Cam balkon" },
   { href: "/dusakabin/", label: "Duşakabin" },
+  { href: "/katalog/", label: "Katalog" },
   { href: "/iletisim/", label: "İletişim" },
 ];
 

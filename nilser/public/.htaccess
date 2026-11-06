@@ -47,6 +47,7 @@ AddDefaultCharset UTF-8
   ExpiresByType image/svg+xml "access plus 1 year"
   ExpiresByType font/woff2 "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType application/pdf "access plus 1 week"
 </IfModule>
 <IfModule mod_headers.c>
   <FilesMatch "\.(webp|jpe?g|png|svg|woff2)$">
@@ -62,12 +63,20 @@ AddDefaultCharset UTF-8
   Header always set X-Frame-Options "SAMEORIGIN"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src https://www.google.com https://maps.google.com; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self' https://www.google.com https://maps.google.com; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+
+  # Katalog PDF'i tarayıcının kendi görüntüleyicisinde açılsın (CSP onu engellemesin)
+  <FilesMatch "\.pdf$">
+    Header always unset Content-Security-Policy
+    Header set Content-Disposition "inline; filename=NILSER-urun-katalogu.pdf"
+  </FilesMatch>
+
 </IfModule>
 
 AddType font/woff2 .woff2
 AddType image/webp .webp
 AddType image/svg+xml .svg
+AddType application/pdf .pdf
 
 # Gizli / yardımcı dosyalara erişimi kapat
 <FilesMatch "(^\.|\.(md|log|ini|sh|mjs|lock)$|^(composer|package)\.json$)">

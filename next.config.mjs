@@ -7,7 +7,7 @@
  */
 
 const SITE_HOST = "nilseraluminyum.com";
-const PAGES = ["sineklik", "plise-perde", "cam-balkon", "dusakabin", "iletisim", "kvkk", "tesekkurler"];
+const PAGES = ["sineklik", "plise-perde", "cam-balkon", "dusakabin", "iletisim", "katalog", "kvkk", "tesekkurler"];
 
 const csp = [
   "default-src 'self'",
@@ -16,7 +16,7 @@ const csp = [
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
-  "frame-src https://www.google.com https://maps.google.com",
+  "frame-src 'self' https://www.google.com https://maps.google.com",
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -55,7 +55,8 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Katalog PDF'i hariç: CSP tarayıcının PDF görüntüleyicisini engelleyebilir
+        source: "/((?!assets/katalog/).*)",
         headers: [
           { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
