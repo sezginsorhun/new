@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require APP . '/icons.php';
+require APP . '/admin_entities.php';
 
 header('X-Robots-Tag: noindex, nofollow');
 header('Cache-Control: no-store');
@@ -21,29 +22,26 @@ function admin_dispatch(array $seg): void
 
     $user = current_admin();
     if (!$user) redirect(admin_url('giris'));
-
     if (is_post()) csrf_check();
 
-    $routes = [
+    $special = [
         '' => 'admin_dashboard',
         'cikis' => 'admin_logout',
-        'projeler' => 'admin_projects',
-        'kategoriler' => 'admin_categories',
         'anasayfa' => 'admin_home',
-        'sayfalar' => 'admin_pages',
-        'basin' => 'admin_press',
         'medya' => 'admin_media',
         'mesajlar' => 'admin_messages',
+        'bulten' => 'admin_newsletter',
         'ayarlar' => 'admin_settings',
         'hesabim' => 'admin_account',
         'guvenlik' => 'admin_security',
     ];
-    if (!isset($routes[$page])) {
-        http_response_code(404);
-        admin_render('admin/notfound', ['title' => 'Bulunamadı'], $user);
-        return;
-    }
-    $routes[$page]($user, $id);
+    if (isset($special[$page])) { $special[$page]($user, $id); return; }
+
+    $defs = entity_defs();
+    if (isset($defs[$page])) { admin_crud($user, $page, $defs[$page], $id); return; }
+
+    http_response_code(404);
+    admin_render('admin/notfound', ['title' => 'Bulunamadı'], $user);
 }
 
 function admin_render(string $view, array $vars, array $user): void
@@ -95,206 +93,238 @@ function admin_logout(array $user): void
 
 function admin_dashboard(array $user): void
 {
+    $count = fn(string $t, string $w = '1=1') => (int) val("SELECT COUNT(*) FROM $t WHERE $w");
     admin_render('admin/dashboard', [
         'title' => 'Panel',
         'stats' => [
-            'projects' => (int) val('SELECT COUNT(*) FROM projects'),
-            'published' => (int) val('SELECT COUNT(*) FROM projects WHERE published = 1'),
-            'messages' => (int) val('SELECT COUNT(*) FROM messages'),
-            'unread' => (int) val('SELECT COUNT(*) FROM messages WHERE is_read = 0'),
-            'media' => (int) val('SELECT COUNT(*) FROM media'),
-            'press' => (int) val('SELECT COUNT(*) FROM press'),
+            ['Proje', $count('projects'), $count('projects', 'published = 1') . ' yayında', 'folder', 'projeler'],
+            ['Ürün', $count('products'), $count('collections') . ' koleksiyon', 'tag', 'urunler'],
+            ['Mesaj', $count('messages'), $count('messages', 'is_read = 0') . ' okunmamış', 'mail', 'mesajlar'],
+            ['Bülten', $count('newsletter'), 'abone', 'newspaper', 'bulten'],
         ],
         'recentMessages' => rows('SELECT * FROM messages ORDER BY id DESC LIMIT 6'),
-        'recentProjects' => rows('SELECT p.*, c.name AS category FROM projects p LEFT JOIN categories c ON c.id = p.category_id ORDER BY p.updated_at DESC LIMIT 6'),
-        'noCover' => (int) val("SELECT COUNT(*) FROM projects WHERE cover = ''"),
+        'recentProjects' => rows('SELECT p.*, c.name AS category FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.updated_at DESC, p.id DESC LIMIT 6'),
+        'demoImages' => (int) val("SELECT (SELECT COUNT(*) FROM projects WHERE cover LIKE 'assets/demo/%') + (SELECT COUNT(*) FROM products WHERE cover LIKE 'assets/demo/%')"),
     ], $user);
 }
 
-/* ---------------- Projeler ---------------- */
+/* ---------------- Genel içerik ekranları ---------------- */
 
-function admin_projects(array $user, ?string $id): void
+function rel_options(array $rel): array
 {
+    [$table, $col] = $rel;
+    $out = [];
+    $extra = $table === 'product_types' ? ', section, group_name' : '';
+    foreach (rows("SELECT id, $col AS name$extra FROM $table ORDER BY " . ($table === 'product_types' ? 'section, sort, id' : 'sort, id')) as $r) {
+        $out[$r['id']] = $table === 'product_types' ? ($r['section'] === 'butik' ? 'Butik' : 'Koleksiyon') . ' › ' . $r['group_name'] . ' › ' . $r['name'] : $r['name'];
+    }
+    return $out;
+}
+
+function admin_crud(array $user, string $slug, array $def, ?string $id): void
+{
+    $table = $def['table'];
+    $key = $def['key'] ?? 'id';
+    $fields = $def['fields'];
+
+    // ---------- Liste ----------
     if ($id === null) {
-        if (is_post() && post('action') === 'reorder') {
-            foreach ((array) ($_POST['sort'] ?? []) as $pid => $s) q('UPDATE projects SET sort = ? WHERE id = ?', [(int) $s, (int) $pid]);
+        if (is_post() && post('action') === 'reorder' && isset($fields['sort'])) {
+            foreach ((array) ($_POST['sort'] ?? []) as $rid => $s) q("UPDATE $table SET sort = ? WHERE $key = ?", [(int) $s, $rid]);
             flash('ok', 'Sıralama kaydedildi.');
-            redirect(admin_url('projeler'));
+            redirect(admin_url($slug));
         }
         $where = '1=1';
         $params = [];
         $search = trim((string) ($_GET['q'] ?? ''));
-        $cat = (int) ($_GET['kategori'] ?? 0);
-        if ($search !== '') { $where .= ' AND (p.title LIKE ? OR p.location LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; }
-        if ($cat) { $where .= ' AND p.category_id = ?'; $params[] = $cat; }
-        admin_render('admin/projects', [
-            'title' => 'Projeler',
-            'projects' => rows("SELECT p.*, c.name AS category, (SELECT COUNT(*) FROM project_images i WHERE i.project_id = p.id) AS image_count
-                FROM projects p LEFT JOIN categories c ON c.id = p.category_id WHERE $where ORDER BY p.sort, p.id DESC", $params),
-            'categories' => rows('SELECT * FROM categories ORDER BY sort, name'),
-            'search' => $search,
-            'cat' => $cat,
+        if ($search !== '') { $where .= " AND {$def['label']} LIKE ?"; $params[] = "%$search%"; }
+        $filter = $def['filter'] ?? null;
+        $fval = $filter ? (int) ($_GET['f'] ?? 0) : 0;
+        if ($filter && $fval) { $where .= " AND $filter = ?"; $params[] = $fval; }
+        $items = rows("SELECT * FROM $table WHERE $where ORDER BY {$def['order']}", $params);
+
+        $relMaps = [];
+        foreach ($def['list'] as $col => $_) {
+            if (($fields[$col]['type'] ?? '') === 'select') {
+                $relMaps[$col] = isset($fields[$col]['rel']) ? rel_options($fields[$col]['rel']) : $fields[$col]['options'];
+            }
+        }
+        admin_render('admin/crud_list', [
+            'title' => $def['title'], 'slug' => $slug, 'def' => $def, 'items' => $items, 'relMaps' => $relMaps,
+            'search' => $search, 'filterOptions' => $filter ? rel_options($fields[$filter]['rel']) : [], 'fval' => $fval,
         ], $user);
         return;
     }
 
-    $project = null;
-    if ($id !== 'yeni') {
-        $project = row('SELECT * FROM projects WHERE id = ?', [(int) $id]);
-        if (!$project) { flash('error', 'Proje bulunamadı.'); redirect(admin_url('projeler')); }
-    }
+    // ---------- Kayıt ----------
+    $isNew = $id === 'yeni' && empty($def['fixed']);
+    $item = $isNew ? null : row("SELECT * FROM $table WHERE $key = ?", [$id]);
+    if (!$isNew && !$item) { flash('error', 'Kayıt bulunamadı.'); redirect(admin_url($slug)); }
 
     if (is_post()) {
-        $action = post('action', 'save');
-        if ($action === 'delete' && $project) {
-            q('DELETE FROM projects WHERE id = ?', [$project['id']]);
-            flash('ok', '“' . $project['title'] . '” silindi.');
-            redirect(admin_url('projeler'));
-        }
-        if ($action === 'delete_image' && $project) {
-            q('DELETE FROM project_images WHERE id = ? AND project_id = ?', [(int) post('image_id'), $project['id']]);
-            flash('ok', 'Görsel galeriden kaldırıldı.');
-            redirect(admin_url('projeler/' . $project['id'] . '#galeri'));
+        if (post('action') === 'delete' && $item && empty($def['fixed'])) {
+            q("DELETE FROM $table WHERE $key = ?", [$item[$key]]);
+            if (!empty($def['gallery'])) q('DELETE FROM gallery WHERE owner = ? AND owner_id = ?', [$def['gallery'], $item[$key]]);
+            flash('ok', '“' . ($item[$def['label']] ?: $def['single']) . '” silindi.');
+            redirect(admin_url($slug));
         }
 
-        $data = [
-            'title' => mb_substr(post('title'), 0, 160),
-            'category_id' => (int) post('category_id') ?: null,
-            'location' => mb_substr(post('location'), 0, 160),
-            'year' => mb_substr(post('year'), 0, 20),
-            'area' => mb_substr(post('area'), 0, 60),
-            'summary' => mb_substr(post('summary'), 0, 400),
-            'body' => mb_substr(post('body'), 0, 20000),
-            'featured' => isset($_POST['featured']) ? 1 : 0,
-            'published' => isset($_POST['published']) ? 1 : 0,
-            'sort' => (int) post('sort', '0'),
-            'seo_title' => mb_substr(post('seo_title'), 0, 160),
-            'seo_description' => mb_substr(post('seo_description'), 0, 300),
-        ];
-        if ($data['title'] === '') {
-            flash('error', 'Proje adı boş olamaz.');
-            redirect(admin_url('projeler/' . ($project['id'] ?? 'yeni')));
-        }
-        $slugInput = post('slug') ?: $data['title'];
-        $data['slug'] = unique_slug('projects', $slugInput, $project['id'] ?? null);
-
-        $err = null;
-        $cover = upload_field('cover_file', $err);
-        if ($err) flash('error', 'Kapak: ' . $err);
-        // Öncelik: yeni yükleme > kaldır işareti > kütüphaneden seçilen > mevcut kapak
-        $data['cover'] = $cover ?? (post('cover_clear') ? '' : (valid_media_path(post('cover')) ?: ($project['cover'] ?? '')));
-
-        if ($project) {
-            $sets = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($data)));
-            q("UPDATE projects SET $sets, updated_at = CURRENT_TIMESTAMP WHERE id = :id", $data + ['id' => $project['id']]);
-            $pid = (int) $project['id'];
-        } else {
-            $cols = implode(', ', array_keys($data));
-            $ph = implode(', ', array_map(fn($k) => ":$k", array_keys($data)));
-            q("INSERT INTO projects($cols) VALUES($ph)", $data);
-            $pid = (int) db()->lastInsertId();
-        }
-
-        // Galeri: yeni yüklemeler, kütüphaneden seçilenler, açıklama ve sıra
+        $data = [];
         $errors = [];
-        $max = (int) val('SELECT COALESCE(MAX(sort), 0) FROM project_images WHERE project_id = ?', [$pid]);
-        foreach (upload_many('gallery_files', $errors) as $path) q('INSERT INTO project_images(project_id, path, sort) VALUES(?,?,?)', [$pid, $path, ++$max]);
-        foreach (array_filter(explode(',', post('gallery_pick'))) as $path) {
-            if ($p = valid_media_path($path)) q('INSERT INTO project_images(project_id, path, sort) VALUES(?,?,?)', [$pid, $p, ++$max]);
-        }
-        foreach ((array) ($_POST['img'] ?? []) as $iid => $im) {
-            q('UPDATE project_images SET caption = ?, sort = ? WHERE id = ? AND project_id = ?',
-                [mb_substr(trim((string) ($im['caption'] ?? '')), 0, 200), (int) ($im['sort'] ?? 0), (int) $iid, $pid]);
-        }
-        foreach ($errors as $e) flash('error', $e);
-        flash('ok', 'Proje kaydedildi.');
-        redirect(admin_url('projeler/' . $pid));
-    }
-
-    admin_render('admin/project_form', [
-        'title' => $project ? $project['title'] : 'Yeni proje',
-        'p' => $project ?? ['id' => null, 'title' => '', 'slug' => '', 'category_id' => null, 'location' => '', 'year' => date('Y'), 'area' => '',
-            'summary' => '', 'body' => '', 'cover' => '', 'featured' => 0, 'published' => 1, 'sort' => 0, 'seo_title' => '', 'seo_description' => ''],
-        'images' => $project ? rows('SELECT * FROM project_images WHERE project_id = ? ORDER BY sort, id', [$project['id']]) : [],
-        'categories' => rows('SELECT * FROM categories ORDER BY sort, name'),
-    ], $user);
-}
-
-/* ---------------- Kategoriler ---------------- */
-
-function admin_categories(array $user): void
-{
-    if (is_post()) {
-        $action = post('action');
-        if ($action === 'add' && post('name') !== '') {
-            q('INSERT INTO categories(name, slug, sort) VALUES(?,?,?)', [mb_substr(post('name'), 0, 80), unique_slug('categories', post('name')), (int) post('sort')]);
-            flash('ok', 'Kategori eklendi.');
-        } elseif ($action === 'save') {
-            foreach ((array) ($_POST['cat'] ?? []) as $cid => $c) {
-                $name = mb_substr(trim((string) ($c['name'] ?? '')), 0, 80);
-                if ($name === '') continue;
-                $slug = unique_slug('categories', trim((string) ($c['slug'] ?? '')) ?: $name, (int) $cid);
-                q('UPDATE categories SET name = ?, slug = ?, sort = ? WHERE id = ?', [$name, $slug, (int) ($c['sort'] ?? 0), (int) $cid]);
+        foreach ($fields as $name => $f) {
+            switch ($f['type']) {
+                case 'gallery':
+                    break;
+                case 'check':
+                    $data[$name] = isset($_POST[$name]) ? 1 : 0;
+                    break;
+                case 'number':
+                    $data[$name] = (int) post($name, '0');
+                    break;
+                case 'select':
+                    $v = post($name);
+                    if (isset($f['rel'])) $data[$name] = ($v !== '' && (int) $v) ? (int) $v : null;
+                    else $data[$name] = array_key_exists($v, $f['options']) ? $v : (string) array_key_first($f['options']);
+                    break;
+                case 'image':
+                    $err = null;
+                    $up = upload_field($name . '__file', $err);
+                    if ($err) $errors[] = $f['label'] . ': ' . $err;
+                    $picked = valid_media_path(post($name));
+                    $data[$name] = $up ?? ($picked ?: (post($name . '__clear') ? '' : ($item[$name] ?? '')));
+                    if (!empty($f['required']) && $data[$name] === '') $errors[] = $f['label'] . ' zorunlu.';
+                    break;
+                case 'slug':
+                    break; // aşağıda
+                default:
+                    $max = in_array($f['type'], ['richtext', 'textarea'], true) ? 30000 : 300;
+                    $data[$name] = mb_substr(post($name), 0, $max);
+                    if (!empty($f['required']) && $data[$name] === '') $errors[] = $f['label'] . ' boş olamaz.';
             }
-            flash('ok', 'Kategoriler kaydedildi.');
-        } elseif ($action === 'delete') {
-            q('DELETE FROM categories WHERE id = ?', [(int) post('id')]);
-            flash('ok', 'Kategori silindi; projeleri kategorisiz kaldı.');
         }
-        redirect(admin_url('kategoriler'));
+        if (isset($fields['slug'])) {
+            $base = post('slug') ?: (string) ($data[$def['label']] ?? '');
+            $data['slug'] = unique_slug($table, $base, $item ? (int) $item['id'] : null);
+        }
+        if ($errors) {
+            foreach ($errors as $e) flash('error', $e);
+            if ($isNew) redirect(admin_url($slug . '/yeni'));
+            // Eksik zorunlu alanlar varsa kaydetme; dosya hatalarında diğer alanlar kaydedilir
+            if (array_filter($errors, fn($e) => str_contains($e, 'zorunlu') || str_contains($e, 'boş olamaz'))) redirect(admin_url($slug . '/' . $id));
+        }
+
+        $cols = array_keys($data);
+        if ($item) {
+            $sets = implode(', ', array_map(fn($k) => "$k = :$k", $cols));
+            $touch = in_array($table, ['projects', 'pages'], true) ? ', updated_at = CURRENT_TIMESTAMP' : '';
+            q("UPDATE $table SET $sets$touch WHERE $key = :__key", $data + ['__key' => $item[$key]]);
+            $rid = $item[$key];
+        } else {
+            q("INSERT INTO $table(" . implode(', ', $cols) . ') VALUES(' . implode(', ', array_map(fn($k) => ":$k", $cols)) . ')', $data);
+            $rid = (int) db()->lastInsertId();
+        }
+
+        if (!empty($def['gallery'])) admin_save_gallery($def['gallery'], (int) $rid);
+        flash('ok', $def['single'] . ' kaydedildi.');
+        redirect(admin_url($slug . '/' . rawurlencode((string) $rid)));
     }
-    admin_render('admin/categories', [
-        'title' => 'Kategoriler',
-        'categories' => rows('SELECT c.*, (SELECT COUNT(*) FROM projects p WHERE p.category_id = c.id) AS n FROM categories c ORDER BY c.sort, c.name'),
+
+    $values = $item ?? [];
+    if (!$item) foreach ($fields as $n => $f) $values[$n] = $f['default'] ?? '';
+    $options = [];
+    foreach ($fields as $n => $f) if ($f['type'] === 'select') $options[$n] = isset($f['rel']) ? rel_options($f['rel']) : $f['options'];
+
+    admin_render('admin/crud_form', [
+        'title' => $item ? ($item[$def['label']] ?: $def['single']) : 'Yeni ' . mb_strtolower($def['single']),
+        'slug' => $slug, 'def' => $def, 'item' => $item, 'values' => $values, 'options' => $options,
+        'gallery' => ($item && !empty($def['gallery'])) ? rows('SELECT * FROM gallery WHERE owner = ? AND owner_id = ? ORDER BY sort, id', [$def['gallery'], $item[$key]]) : [],
     ], $user);
 }
 
-/* ---------------- Ana sayfa ---------------- */
+/** Galeri: açıklama/sıra güncelle, işaretlileri sil, yeni yüklemeleri ve kütüphane seçimlerini ekle. */
+function admin_save_gallery(string $owner, int $ownerId): void
+{
+    foreach ((array) ($_POST['g'] ?? []) as $gid => $g) {
+        if (!empty($g['del'])) {
+            q('DELETE FROM gallery WHERE id = ? AND owner = ? AND owner_id = ?', [(int) $gid, $owner, $ownerId]);
+            continue;
+        }
+        q('UPDATE gallery SET caption = ?, sort = ? WHERE id = ? AND owner = ? AND owner_id = ?',
+            [mb_substr(trim((string) ($g['caption'] ?? '')), 0, 200), (int) ($g['sort'] ?? 0), (int) $gid, $owner, $ownerId]);
+    }
+    $max = (int) val('SELECT COALESCE(MAX(sort), 0) FROM gallery WHERE owner = ? AND owner_id = ?', [$owner, $ownerId]);
+    $errors = [];
+    foreach (upload_many('gallery_files', $errors) as $path) q('INSERT INTO gallery(owner, owner_id, path, sort) VALUES(?,?,?,?)', [$owner, $ownerId, $path, ++$max]);
+    foreach (array_filter(explode(',', post('gallery_pick'))) as $path) {
+        if ($p = valid_media_path($path)) q('INSERT INTO gallery(owner, owner_id, path, sort) VALUES(?,?,?,?)', [$owner, $ownerId, $p, ++$max]);
+    }
+    foreach ($errors as $e) flash('error', $e);
+}
+
+/* ---------------- Ana sayfa ve genel metinler ---------------- */
+
+/** Ayar formlarında kullanılan alan grupları: [anahtar, etiket, tür] */
+function home_setting_groups(): array
+{
+    return [
+        'Üst şerit' => [
+            ['announce_title', 'Başlık', 'text'], ['announce_text', 'Alt metin', 'text'], ['announce_link', 'Bağlantı', 'text'],
+        ],
+        'Açılış görseli' => [
+            ['hero_image', 'Görsel', 'image'], ['hero_video', 'Video yolu (isteğe bağlı, mp4)', 'text'],
+            ['hero_title', 'Başlık', 'text'], ['hero_subtitle', 'Alt başlık', 'text'], ['hero_link', 'Bağlantı', 'text'],
+        ],
+        'Giriş metni' => [
+            ['home_intro', 'Metin', 'textarea'], ['home_intro_link', 'Bağlantı yazısı', 'text'],
+        ],
+        'Projeler bölümü' => [
+            ['home_projects_title', 'Başlık', 'text'], ['home_projects_text', 'Metin', 'textarea'],
+        ],
+        'Ev koleksiyonu bölümü' => [
+            ['home_collection_title', 'Başlık', 'text'], ['home_collection_text', 'Metin', 'textarea'],
+            ['home_collection_image', 'Büyük görsel', 'image'], ['home_collection_image2', 'Küçük görsel 1', 'image'], ['home_collection_image3', 'Küçük görsel 2', 'image'],
+        ],
+        'Adresler ve tanışma' => [
+            ['home_addresses_title', 'Adresler başlığı', 'text'], ['home_addresses_text', 'Adresler metni', 'textarea'],
+            ['home_meet_title', 'Tanışma başlığı', 'text'], ['home_meet_text', 'Tanışma metni', 'textarea'],
+        ],
+        'Açılır menüler' => [
+            ['univers_menu_text', 'Evren menüsü metni', 'textarea'], ['univers_menu_image', 'Evren menüsü görseli', 'image'],
+            ['collection_menu_image', 'Koleksiyon menüsü görseli', 'image'], ['shop_menu_image', 'Butik menüsü görseli', 'image'],
+        ],
+        'Diğer sayfa metinleri' => [
+            ['collections_hero', 'Koleksiyonlar sayfası görseli', 'image'], ['collections_intro', 'Koleksiyonlar giriş metni', 'textarea'],
+            ['chronicles_marquee', 'Günce kayan yazı', 'text'], ['chronicles_intro', 'Günce giriş metni', 'textarea'],
+            ['design_steps', 'Tasarım hizmeti adımları', 'textarea', 'Her satır bir adım: Başlık | açıklama'],
+        ],
+    ];
+}
 
 function admin_home(array $user): void
 {
+    $groups = home_setting_groups();
     if (is_post()) {
-        $action = post('action');
-        if ($action === 'texts') {
-            foreach (['tagline', 'intro_title', 'intro_text', 'home_featured_title', 'slide_interval'] as $k) save_setting($k, mb_substr(post($k), 0, 4000));
-            flash('ok', 'Ana sayfa metinleri kaydedildi.');
-        } elseif ($action === 'add_slide') {
-            $err = null;
-            $image = upload_field('image_file', $err) ?? valid_media_path(post('image'));
-            if ($err) flash('error', $err);
-            if ($image) {
-                $max = (int) val('SELECT COALESCE(MAX(sort), 0) FROM slides');
-                q('INSERT INTO slides(image, title, subtitle, link, sort) VALUES(?,?,?,?,?)',
-                    [$image, mb_substr(post('title'), 0, 120), mb_substr(post('subtitle'), 0, 120), admin_clean_link(post('link')), $max + 1]);
-                flash('ok', 'Görsel eklendi.');
-            } elseif (!$err) {
-                flash('error', 'Bir görsel yükleyin ya da kütüphaneden seçin.');
+        foreach ($groups as $items) {
+            foreach ($items as $it) {
+                [$k, $label, $type] = $it;
+                if ($type === 'image') {
+                    $err = null;
+                    $up = upload_field($k . '__file', $err);
+                    if ($err) flash('error', $label . ': ' . $err);
+                    $picked = valid_media_path(post($k));
+                    if ($up || $picked) save_setting($k, $up ?? $picked);
+                } else {
+                    $v = mb_substr(post($k), 0, 8000);
+                    if (str_ends_with($k, '_link')) $v = admin_clean_link($v) ?: '/';
+                    if ($k === 'hero_video' && $v !== '' && !preg_match('~^(uploads|assets)/[\w/.\-]+\.mp4$~', $v)) $v = '';
+                    save_setting($k, $v);
+                }
             }
-        } elseif ($action === 'save_slides') {
-            foreach ((array) ($_POST['slide'] ?? []) as $sid => $s) {
-                $sets = [
-                    mb_substr(trim((string) ($s['title'] ?? '')), 0, 120),
-                    mb_substr(trim((string) ($s['subtitle'] ?? '')), 0, 120),
-                    admin_clean_link((string) ($s['link'] ?? '')),
-                    (int) ($s['sort'] ?? 0),
-                    !empty($s['active']) ? 1 : 0,
-                ];
-                q('UPDATE slides SET title = ?, subtitle = ?, link = ?, sort = ?, active = ? WHERE id = ?', [...$sets, (int) $sid]);
-                $img = valid_media_path((string) ($s['image'] ?? ''));
-                if ($img) q('UPDATE slides SET image = ? WHERE id = ?', [$img, (int) $sid]);
-            }
-            flash('ok', 'Görseller kaydedildi.');
-        } elseif ($action === 'delete_slide') {
-            q('DELETE FROM slides WHERE id = ?', [(int) post('id')]);
-            flash('ok', 'Görsel kaldırıldı.');
         }
+        flash('ok', 'Ana sayfa ve metinler kaydedildi.');
         redirect(admin_url('anasayfa'));
     }
-    admin_render('admin/home', [
-        'title' => 'Ana Sayfa',
-        'slides' => rows('SELECT * FROM slides ORDER BY sort, id'),
-        'projects' => rows('SELECT title, slug FROM projects ORDER BY title'),
-    ], $user);
+    admin_render('admin/home', ['title' => 'Ana Sayfa & Metinler', 'groups' => $groups, 's' => settings()], $user);
 }
 
 /** Bağlantılar yalnızca site içi yol ya da http(s) olabilir (javascript: vb. engellenir). */
@@ -305,70 +335,6 @@ function admin_clean_link(string $link): string
     if (str_starts_with($link, '/') && !str_starts_with($link, '//')) return mb_substr($link, 0, 300);
     if (preg_match('~^https?://~i', $link)) return mb_substr($link, 0, 300);
     return '';
-}
-
-/* ---------------- Sayfalar ---------------- */
-
-function admin_pages(array $user, ?string $slug): void
-{
-    if ($slug === null) {
-        admin_render('admin/pages', ['title' => 'Sayfalar', 'pages' => rows('SELECT * FROM pages ORDER BY slug DESC')], $user);
-        return;
-    }
-    $page = row('SELECT * FROM pages WHERE slug = ?', [$slug]);
-    if (!$page) { flash('error', 'Sayfa bulunamadı.'); redirect(admin_url('sayfalar')); }
-    if (is_post()) {
-        $err = null;
-        $image = upload_field('image_file', $err) ?? (post('image_clear') ? '' : (valid_media_path(post('image')) ?: $page['image']));
-        if ($err) flash('error', $err);
-        q('UPDATE pages SET title = ?, body = ?, image = ?, updated_at = CURRENT_TIMESTAMP WHERE slug = ?',
-            [mb_substr(post('title'), 0, 160) ?: $page['title'], mb_substr(post('body'), 0, 30000), $image, $slug]);
-        flash('ok', 'Sayfa kaydedildi.');
-        redirect(admin_url('sayfalar/' . $slug));
-    }
-    admin_render('admin/page_form', ['title' => $page['title'], 'page' => $page], $user);
-}
-
-/* ---------------- Basın ---------------- */
-
-function admin_press(array $user): void
-{
-    if (is_post()) {
-        $action = post('action');
-        if ($action === 'add') {
-            if (post('publication') === '') {
-                flash('error', 'Yayın adı zorunlu.');
-            } else {
-                $err = null;
-                $image = upload_field('image_file', $err) ?? valid_media_path(post('image'));
-                if ($err) flash('error', $err);
-                $max = (int) val('SELECT COALESCE(MAX(sort), 0) FROM press');
-                q('INSERT INTO press(publication, title, issue, image, link, sort) VALUES(?,?,?,?,?,?)',
-                    [mb_substr(post('publication'), 0, 120), mb_substr(post('title'), 0, 200), mb_substr(post('issue'), 0, 80), (string) $image, admin_clean_link(post('link')), $max + 1]);
-                flash('ok', 'Yayın eklendi.');
-            }
-        } elseif ($action === 'save') {
-            foreach ((array) ($_POST['item'] ?? []) as $pid => $it) {
-                q('UPDATE press SET publication = ?, title = ?, issue = ?, link = ?, sort = ?, published = ? WHERE id = ?', [
-                    mb_substr(trim((string) ($it['publication'] ?? '')), 0, 120) ?: '—',
-                    mb_substr(trim((string) ($it['title'] ?? '')), 0, 200),
-                    mb_substr(trim((string) ($it['issue'] ?? '')), 0, 80),
-                    admin_clean_link((string) ($it['link'] ?? '')),
-                    (int) ($it['sort'] ?? 0),
-                    !empty($it['published']) ? 1 : 0,
-                    (int) $pid,
-                ]);
-                $img = valid_media_path((string) ($it['image'] ?? ''));
-                if ($img) q('UPDATE press SET image = ? WHERE id = ?', [$img, (int) $pid]);
-            }
-            flash('ok', 'Basın listesi kaydedildi.');
-        } elseif ($action === 'delete') {
-            q('DELETE FROM press WHERE id = ?', [(int) post('id')]);
-            flash('ok', 'Yayın silindi.');
-        }
-        redirect(admin_url('basin'));
-    }
-    admin_render('admin/press', ['title' => 'Basın', 'items' => rows('SELECT * FROM press ORDER BY sort, id DESC')], $user);
 }
 
 /* ---------------- Medya ---------------- */
@@ -384,24 +350,28 @@ function admin_media(array $user, ?string $sub): void
         if (post('action') === 'upload') {
             $errors = [];
             $n = count(upload_many('files', $errors));
-            foreach ($errors as $e) flash('error', $e);
-            if ($n) flash('ok', "$n görsel yüklendi.");
             if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
                 header('Content-Type: application/json');
-                echo json_encode(['ok' => $n > 0, 'errors' => $errors, 'items' => rows('SELECT id, path, original_name, width, height FROM media ORDER BY id DESC LIMIT ' . max(1, $n))]);
-                take_flash();
+                echo json_encode(['ok' => $n > 0, 'errors' => $errors]);
                 return;
             }
+            foreach ($errors as $e) flash('error', $e);
+            if ($n) flash('ok', "$n görsel yüklendi.");
         } elseif (post('action') === 'delete') {
             $m = row('SELECT * FROM media WHERE id = ?', [(int) post('id')]);
             if ($m) {
-                $used = (int) val('SELECT (SELECT COUNT(*) FROM projects WHERE cover = :p) + (SELECT COUNT(*) FROM project_images WHERE path = :p)
-                    + (SELECT COUNT(*) FROM slides WHERE image = :p) + (SELECT COUNT(*) FROM press WHERE image = :p) + (SELECT COUNT(*) FROM pages WHERE image = :p)', ['p' => $m['path']]);
+                $p = $m['path'];
+                $used = (int) val('SELECT (SELECT COUNT(*) FROM projects WHERE cover = :p) + (SELECT COUNT(*) FROM gallery WHERE path = :p)
+                    + (SELECT COUNT(*) FROM products WHERE cover = :p) + (SELECT COUNT(*) FROM project_categories WHERE image = :p)
+                    + (SELECT COUNT(*) FROM product_types WHERE image = :p) + (SELECT COUNT(*) FROM collections WHERE image = :p)
+                    + (SELECT COUNT(*) FROM chronicles WHERE image = :p) + (SELECT COUNT(*) FROM showrooms WHERE image = :p)
+                    + (SELECT COUNT(*) FROM slides WHERE image = :p) + (SELECT COUNT(*) FROM pages WHERE image = :p)
+                    + (SELECT COUNT(*) FROM settings WHERE value = :p)', ['p' => $p]);
                 if ($used) {
                     flash('error', 'Bu görsel sitede kullanılıyor; önce kullanıldığı yerden kaldırın.');
                 } else {
                     q('DELETE FROM media WHERE id = ?', [$m['id']]);
-                    if (valid_media_path($m['path'])) @unlink(ROOT . '/' . $m['path']);
+                    if (valid_media_path($p)) @unlink(ROOT . '/' . $p);
                     flash('ok', 'Görsel silindi.');
                 }
             }
@@ -411,7 +381,9 @@ function admin_media(array $user, ?string $sub): void
     admin_render('admin/media', ['title' => 'Medya', 'items' => rows('SELECT * FROM media ORDER BY id DESC')], $user);
 }
 
-/* ---------------- Mesajlar ---------------- */
+/* ---------------- Mesajlar ve bülten ---------------- */
+
+const MESSAGE_TYPES = ['iletisim' => 'İletişim', 'proje' => 'Proje talebi', 'showroom' => 'Showroom ziyareti', 'urun' => 'Ürün bilgisi'];
 
 function admin_messages(array $user, ?string $id): void
 {
@@ -425,7 +397,7 @@ function admin_messages(array $user, ?string $id): void
             default => null,
         };
         flash('ok', 'Güncellendi.');
-        redirect(post('action') === 'delete' ? admin_url('mesajlar') : ($id ? admin_url('mesajlar/' . $id) : admin_url('mesajlar')));
+        redirect(post('action') === 'delete' || !$id ? admin_url('mesajlar') : admin_url('mesajlar/' . $id));
     }
     if ($id !== null) {
         $m = row('SELECT * FROM messages WHERE id = ?', [(int) $id]);
@@ -434,16 +406,40 @@ function admin_messages(array $user, ?string $id): void
         admin_render('admin/message', ['title' => 'Mesaj', 'm' => $m], $user);
         return;
     }
-    $filter = $_GET['durum'] ?? '';
-    $where = $filter === 'okunmamis' ? 'WHERE is_read = 0' : '';
-    admin_render('admin/messages', ['title' => 'Mesajlar', 'messages' => rows("SELECT * FROM messages $where ORDER BY id DESC LIMIT 300"), 'filter' => $filter], $user);
+    $filter = (string) ($_GET['tur'] ?? '');
+    $where = '1=1';
+    $params = [];
+    if ($filter === 'okunmamis') $where = 'is_read = 0';
+    elseif (isset(MESSAGE_TYPES[$filter])) { $where = 'type = ?'; $params[] = $filter; }
+    admin_render('admin/messages', [
+        'title' => 'Mesajlar',
+        'messages' => rows("SELECT * FROM messages WHERE $where ORDER BY id DESC LIMIT 300", $params),
+        'filter' => $filter,
+    ], $user);
+}
+
+function admin_newsletter(array $user): void
+{
+    if (isset($_GET['csv'])) {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="bulten-aboneleri-' . date('Y-m-d') . '.csv"');
+        echo "\xEF\xBB\xBF" . "e-posta;tarih\n";
+        foreach (rows('SELECT email, created_at FROM newsletter ORDER BY id DESC') as $r) echo $r['email'] . ';' . $r['created_at'] . "\n";
+        return;
+    }
+    if (is_post() && post('action') === 'delete') {
+        q('DELETE FROM newsletter WHERE id = ?', [(int) post('id')]);
+        flash('ok', 'Abone silindi.');
+        redirect(admin_url('bulten'));
+    }
+    admin_render('admin/newsletter', ['title' => 'Bülten', 'items' => rows('SELECT * FROM newsletter ORDER BY id DESC')], $user);
 }
 
 /* ---------------- Ayarlar ---------------- */
 
 const SETTING_FIELDS = [
-    'site_name', 'logo_line1', 'logo_line2', 'footer_note',
-    'contact_email', 'contact_phone', 'contact_address', 'contact_hours', 'map_url', 'notify_email',
+    'site_name', 'logo_left', 'logo_mid', 'logo_right',
+    'contact_email', 'contact_phone', 'notify_email',
     'instagram', 'pinterest', 'linkedin',
     'seo_title', 'seo_description',
 ];
@@ -453,7 +449,7 @@ function admin_settings(array $user): void
     if (is_post()) {
         foreach (SETTING_FIELDS as $k) {
             $v = mb_substr(post($k), 0, 2000);
-            if (in_array($k, ['instagram', 'pinterest', 'linkedin', 'map_url'], true)) $v = admin_clean_link($v);
+            if (in_array($k, ['instagram', 'pinterest', 'linkedin'], true)) $v = admin_clean_link($v);
             save_setting($k, $v);
         }
         flash('ok', 'Ayarlar kaydedildi.');

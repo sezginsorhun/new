@@ -20,22 +20,47 @@ assets/              CSS, JS, yazı tipleri, yer tutucu görseller
 
 ## Vitrin
 
-`/` tam ekran görsel geçişi + giriş metni + öne çıkan projeler ·
-`/projeler` ve `/kategori/<ad>` · `/projeler/<proje>` kapak, bilgiler, metin,
-galeri, sıradaki proje · `/studyo` · `/basin` (kayıt yoksa menüde görünmez) ·
-`/iletisim` (form → panel + e-posta) · `/kvkk` · `/sitemap.xml`.
+Sayfa kurgusu ve tasarım dili gillesetboissier.com sitesini izler (üst şerit,
+ortada logo, açılır geniş menüler, tam genişlik görseller, geniş harfli
+başlıklar + gri serif metinler). Yazı tipleri: Lexend Exa, Cormorant Garamond,
+Roboto (hepsi ücretsiz, OFL).
+
+| Adres | Sayfa |
+|---|---|
+| `/` | Açılış görseli, giriş, proje kategorileri, ev koleksiyonu, adresler |
+| `/evren` | Slayt, stüdyo metni, sanat şeridi, adresler |
+| `/projeler`, `/projeler/<kategori>`, `/proje/<proje>` | Kategoriler, proje ızgarası, kolaj galeri + alıntı |
+| `/gunce`, `/gunce/<yazı>` | Kayan başlık, yazı kartları |
+| `/koleksiyonlar`, `/koleksiyon/<ad>` | Koleksiyon blokları ve ürün satırları |
+| `/mobilya`, `/butik`, `/urunler/<grup>`, `/urun/<ürün>` | Ürün grupları, liste, ürün detayı + bilgi talebi |
+| `/adres/<showroom>` | Slayt, bilgiler, dekorasyon hizmeti, ziyaret formu |
+| `/tasarim-hizmeti`, `/iletisim` | 4 adım + proje formu; adresler + iletişim formu |
+| `/arama`, `/istek-listesi` | Arama; cihazda saklanan beğeni listesi |
+| `/basin`, `/oduller`, `/kariyer`, `/kvkk`, `/yasal-bildirim`, `/satis-kosullari`, `/cerez-politikasi` | Metin sayfaları |
+
+Butik bölümünde sepet/ödeme yoktur; ürünlerde “Bilgi talep edin” formu vardır.
+Demo görseller `assets/demo/` altında (Unsplash lisansı) — gerçek fotoğraflarla
+panelden değiştirilir.
 
 ## Yönetim paneli
 
 `https://ruendesignstudio.com/<admin_path>/` — `/admin` 404 döner.
-Panel, Mesajlar, Projeler (kapak + galeri + SEO), Kategoriler, Basın,
-Ana Sayfa (tam ekran görseller ve giriş metni), Sayfalar (Stüdyo, KVKK),
-Medya kütüphanesi, Hesabım (şifre, yönetici ekleme), Ayarlar, Güvenlik.
 
-Güvenlik: bcrypt şifre, oturum çerezi httpOnly/SameSite, her formda CSRF
-belirteci, IP başına 15 dakikada 8 hatalı girişte kilit, yüklenen görseller
-GD ile yeniden kodlanır (gizli içerik ve EXIF atılır), şifre değişince diğer
-oturumlar düşer.
+- **Genel:** Panel, Mesajlar (iletişim / proje / showroom / ürün), Bülten (CSV)
+- **Projeler:** Projeler (kapak + galeri), Proje Kategorileri
+- **Koleksiyon:** Ürünler, Ürün Grupları (menü sütunları), Koleksiyonlar
+- **İçerik:** Ana Sayfa & Metinler, Günce, Adresler, Evren Görselleri, Sayfalar, Medya
+- **Sistem:** Hesabım, Ayarlar, Güvenlik
+
+İçerik türleri `app/admin_entities.php` içinde tanımlıdır; liste ve düzenleme
+ekranları bu tanımlardan oluşur.
+
+Güvenlik: bcrypt şifre, httpOnly/SameSite oturum çerezi, her formda CSRF
+belirteci, IP başına 15 dakikada 8 hatalı girişte kilit, yüklenen görseller GD
+ile yeniden kodlanır, şifre değişince diğer oturumlar düşer.
+
+Veritabanı şeması `PRAGMA user_version` ile sürümlenir; v1 → v2 geçişinde
+kullanıcılar, ayarlar, mesajlar ve medya korunur.
 
 ## Yerelde çalıştırma
 

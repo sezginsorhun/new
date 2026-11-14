@@ -241,3 +241,16 @@ select.field { -webkit-appearance: none; appearance: none; padding-right: 32px; 
 .login-box { width: 100%; max-width: 380px; padding: 32px; }
 .login-brand { text-align: center; margin-bottom: 28px; }
 .login-brand .brand-name { font-size: 26px; margin-right: -.28em; }
+
+/* ---------- Ayar ızgarası ---------- */
+.max-900 { max-width: 900px; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.settings-grid .sg-full { grid-column: 1 / -1; }
+.settings-grid .sg-image .thumb-lg { aspect-ratio: 16 / 9; }
+.sticky-save { position: sticky; bottom: 0; padding: 12px 0; background: linear-gradient(transparent, var(--cream) 40%); }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+a.stat { transition: border-color .15s; }
+a.stat:hover { border-color: var(--line-strong); }
+.tabs { overflow-x: auto; scrollbar-width: none; }
+.tabs a { white-space: nowrap; }
+@media (max-width: 720px) { .settings-grid { grid-template-columns: 1fr; } }

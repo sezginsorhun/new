@@ -11,8 +11,8 @@
 <body class="login-body">
   <main class="login-box card">
     <div class="login-brand">
-      <p class="brand-name"><?= e(setting('logo_line1', 'RUEN')) ?></p>
-      <p class="brand-sub"><?= e(setting('logo_line2', 'DESIGN STUDIO')) ?> · Yönetim</p>
+      <p class="brand-name"><?= e(setting('logo_left', 'RUEN')) ?></p>
+      <p class="brand-sub"><?= e(setting('logo_mid', 'Design') . ' ' . setting('logo_right', 'STUDIO')) ?> · Yönetim</p>
     </div>
     <?php if ($error): ?><div class="flash flash-error" role="alert"><?= e($error) ?></div><?php endif; ?>
     <form method="post" action="<?= e(admin_url('giris')) ?>" class="stack">

@@ -1,5 +1,5 @@
-<section class="page-head notfound">
-  <p class="eyebrow">404</p>
-  <h1>Aradığınız sayfa bulunamadı.</h1>
-  <p><a class="link-line" href="/">Ana sayfaya dönün</a></p>
+<section class="center-head page-simple notfound">
+  <p class="list-eyebrow">404</p>
+  <h1 class="h-wide">Sayfa bulunamadı</h1>
+  <p><a class="lnk" href="/">Ana sayfaya dönün</a></p>
 </section>

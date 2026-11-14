@@ -61,9 +61,16 @@ function paragraphs(string $text): string
             $out .= '<h3>' . e($m[1]) . '</h3>';
             continue;
         }
-        $out .= '<p>' . nl2br(e($p), false) . '</p>';
+        $out .= '<p>' . inline_format(nl2br(e($p), false)) . '</p>';
     }
     return $out;
+}
+
+/** **kalın** ve *italik* işaretlerini (önceden kaçırılmış metinde) etikete çevirir. */
+function inline_format(string $html): string
+{
+    $html = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $html);
+    return preg_replace('/(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/s', '<em>$1</em>', $html);
 }
 
 function excerpt(string $text, int $len = 160): string

@@ -17,7 +17,9 @@
     <dl class="dl">
       <dt>E-posta</dt><dd><a href="mailto:<?= e($m['email']) ?>"><?= e($m['email']) ?></a></dd>
       <?php if ($m['phone']): ?><dt>Telefon</dt><dd><a href="tel:<?= e(preg_replace('/[^0-9+]/', '', $m['phone'])) ?>"><?= e($m['phone']) ?></a></dd><?php endif; ?>
-      <dt>Proje türü</dt><dd><?= e($m['subject'] ?: '—') ?></dd>
+      <dt>Tür</dt><dd><?= e(MESSAGE_TYPES[$m['type']] ?? $m['type']) ?></dd>
+      <dt>Konu</dt><dd><?= e($m['subject'] ?: '—') ?></dd>
+      <?php if ($m['meta']): ?><dt>Ek bilgi</dt><dd><?= nl2br(e($m['meta'])) ?></dd><?php endif; ?>
       <dt>Tarih</dt><dd><?= e(tr_date($m['created_at'], true)) ?></dd>
       <dt>IP</dt><dd class="muted"><?= e($m['ip']) ?></dd>
     </dl>

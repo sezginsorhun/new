@@ -2,9 +2,10 @@
 /** Mağaza panelindeki düzenin aynısı: 228px beyaz kenar çubuğu, gruplu menü, krem içerik alanı. */
 
 $groups = [
-    'Genel' => [['', 'Panel', 'dashboard'], ['mesajlar', 'Mesajlar', 'mail']],
-    'Portfolyo' => [['projeler', 'Projeler', 'folder'], ['kategoriler', 'Kategoriler', 'tag'], ['basin', 'Basın', 'newspaper']],
-    'Görünüm' => [['anasayfa', 'Ana Sayfa', 'layout'], ['sayfalar', 'Sayfalar', 'file'], ['medya', 'Medya', 'images']],
+    'Genel' => [['', 'Panel', 'dashboard'], ['mesajlar', 'Mesajlar', 'mail'], ['bulten', 'Bülten', 'newspaper']],
+    'Projeler' => [['projeler', 'Projeler', 'folder'], ['proje-kategorileri', 'Proje Kategorileri', 'tag']],
+    'Koleksiyon' => [['urunler', 'Ürünler', 'box'], ['urun-gruplari', 'Ürün Grupları', 'list'], ['koleksiyonlar', 'Koleksiyonlar', 'layers']],
+    'İçerik' => [['anasayfa', 'Ana Sayfa & Metinler', 'layout'], ['gunce', 'Günce', 'file'], ['showroomlar', 'Adresler', 'pin'], ['slaytlar', 'Evren Görselleri', 'images'], ['sayfalar', 'Sayfalar', 'file'], ['medya', 'Medya', 'images']],
     'Sistem' => [['hesabim', 'Hesabım', 'user'], ['ayarlar', 'Ayarlar', 'settings'], ['guvenlik', 'Güvenlik', 'shield']],
 ];
 $reqPath = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
@@ -25,7 +26,7 @@ $siteName = setting('site_name', 'Ruen Design Studio');
   <aside class="sidebar">
     <div class="brand">
       <a href="<?= e(admin_url()) ?>">
-        <p class="brand-name"><?= e(setting('logo_line1', 'RUEN')) ?></p>
+        <p class="brand-name"><?= e(setting('logo_left', 'RUEN')) ?></p>
         <p class="brand-sub">Yönetim</p>
       </a>
     </div>
@@ -56,7 +57,7 @@ $siteName = setting('site_name', 'Ruen Design Studio');
   <div class="main-col">
     <div class="topbar">
       <div class="topbar-row">
-        <a href="<?= e(admin_url()) ?>" class="topbar-brand"><?= e(setting('logo_line1', 'RUEN')) ?> Yönetim</a>
+        <a href="<?= e(admin_url()) ?>" class="topbar-brand"><?= e(setting('logo_left', 'RUEN')) ?> Yönetim</a>
         <form method="post" action="<?= e(admin_url('cikis')) ?>"><?= csrf_field() ?><button class="btn-ghost" type="submit">Çıkış</button></form>
       </div>
       <div class="topbar-links">
