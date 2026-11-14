@@ -88,7 +88,9 @@ function db_migrate(): void
     if (!in_array('type', $cols, true)) db()->exec("ALTER TABLE messages ADD COLUMN type TEXT NOT NULL DEFAULT 'iletisim'");
     if (!in_array('meta', $cols, true)) db()->exec("ALTER TABLE messages ADD COLUMN meta TEXT NOT NULL DEFAULT ''");
 
-    // v1 içerik tabloları yeni yapıyla değişir
+    // v1 içerik tabloları yeni yapıyla değişir. Tamamı tek işlemde: yarıda
+    // kesilirse hiçbir değişiklik kalıcı olmaz ve sonraki istekte yeniden denenir.
+    db()->beginTransaction();
     db()->exec(<<<SQL
     DROP TABLE IF EXISTS project_images;
     DROP TABLE IF EXISTS projects;
@@ -173,7 +175,13 @@ function db_migrate(): void
     );
     SQL);
 
-    require APP . '/seed.php';
-    seed_database();
-    db()->exec('PRAGMA user_version = 2');
+    try {
+        require_once APP . '/seed.php';
+        seed_database();
+        db()->exec('PRAGMA user_version = 2');
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) db()->rollBack();
+        throw $e;
+    }
 }

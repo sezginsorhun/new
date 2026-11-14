@@ -13,7 +13,8 @@ function demo(string $name): string
 function seed_database(): void
 {
     $pdo = db();
-    $pdo->beginTransaction();
+    $own = !$pdo->inTransaction();
+    if ($own) $pdo->beginTransaction();
 
     /* ---------- Ayarlar ---------- */
     $force = [
@@ -245,5 +246,5 @@ function seed_database(): void
     $st = $pdo->prepare('INSERT INTO pages(slug, title, subtitle, body, image) VALUES(?,?,?,?,?)');
     foreach ($pages as $p) $st->execute($p);
 
-    $pdo->commit();
+    if ($own) $pdo->commit();
 }
