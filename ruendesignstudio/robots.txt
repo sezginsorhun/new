@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://ruendesignstudio.com/sitemap.xml
