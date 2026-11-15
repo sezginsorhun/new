@@ -245,4 +245,16 @@ if (process.env.IMPORT_CATALOG === "1") {
     console.error("✗ Katalog yüklenemedi. Derleme durduruldu.");
     process.exit(1);
   }
+
+  /* Toptancı kataloğu: gerçek ürünler (src/db/katalog-toptanci.json).
+     Aynı kural: var olana dokunmaz, yalnızca eksik ürünleri ekler. */
+  const toptanci = spawnSync("npx", ["tsx", "src/db/import-toptanci.ts"], {
+    stdio: "inherit",
+    env: process.env,
+    shell: process.platform === "win32",
+  });
+  if (toptanci.status !== 0) {
+    console.error("✗ Toptancı kataloğu yüklenemedi. Derleme durduruldu.");
+    process.exit(1);
+  }
 }
