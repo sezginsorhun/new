@@ -429,7 +429,9 @@ def pick_src(img: dict) -> str:
         bits = part.strip().split(" ")
         if len(bits) == 2 and bits[1].endswith("w"):
             w = int(bits[1][:-1])
-            if 550 <= w <= 800 and (best is None or w < best[0]):
+            # Hedef genişliğe en yakın ama ondan küçük olmayan boyut;
+            # yoksa orijinal (src) kullanılır ve sonra küçültülür.
+            if w >= IMG_WIDTH and (best is None or w < best[0]):
                 best = (w, bits[0])
     return best[1] if best else img["src"]
 
