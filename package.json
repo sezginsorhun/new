@@ -24,11 +24,11 @@
     "jose": "^6.2.12",
     "lucide-react": "^1.45.0",
     "mysql2": "^3.24.5",
-    "next": "16.3.5",
-    "nodemailer": "^10.0.9",
+    "next": "16.4.5",
+    "nodemailer": "^10.1.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.6.2"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
