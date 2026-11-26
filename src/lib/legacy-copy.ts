@@ -86,6 +86,7 @@ type BannerLike = {
   buttonLabel: string | null;
   secondaryLabel: string | null;
   secondaryUrl: string | null;
+  overlay?: number;
 };
 
 /** Kodla çizilmiş demo görseli (pastel dalgalar) */
@@ -97,7 +98,26 @@ export function refreshBanner<T extends BannerLike>(banner: T): T | null {
   // Görseli hâlâ demo çizimi olan slayt hiç gösterilmez.
   if (isPlaceholderImage(banner.imageUrl)) return null;
   const copy = banner.title ? SLIDE_COPY[banner.title.trim()] : undefined;
-  const next = copy ? { ...banner, ...copy } : { ...banner };
+  /*
+   * Görseli panelden değiştirilmiş ama metni hâlâ demo olan slayt: yüklenen
+   * kampanya görselinin genelde kendi yazısı vardır; üstüne başka başlık ve
+   * düğme basmak yazıları üst üste bindirir. Bu yüzden slayt yalnızca
+   * görsel olarak gösterilir (tamamı tıklanabilir, ilgili kategoriye gider).
+   */
+  const next = copy
+    ? {
+        ...banner,
+        eyebrow: null,
+        title: null,
+        subtitle: null,
+        buttonLabel: null,
+        secondaryLabel: null,
+        secondaryUrl: null,
+        imageAlt: banner.imageAlt && !/iç giyim|dantel|pamuklu/i.test(banner.imageAlt) ? banner.imageAlt : copy.imageAlt,
+        linkUrl: copy.linkUrl,
+        overlay: 0,
+      }
+    : { ...banner };
   next.linkUrl = fixLegacyLink(next.linkUrl);
   next.secondaryUrl = fixLegacyLink(next.secondaryUrl);
   return next;
