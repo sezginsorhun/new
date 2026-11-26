@@ -59,9 +59,11 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1", "0.0.0.0"],
 
   images: {
-    // Örnek ürün görselleri SVG olarak üretiliyor.
-    // CSP ile SVG içindeki script'ler etkisiz hale getirilir.
-    dangerouslyAllowSVG: true,
+    // SVG'ler görsel optimizasyonundan GEÇİRİLMEZ: Next.js 16.4.4 öncesinde
+    // optimizasyon ucunda SVG üzerinden uzaktan kod çalıştırma açığı vardı.
+    // ".svg" uzantılı görseller zaten otomatik olarak optimize edilmeden
+    // (unoptimized) sunulur; bu ayarın açık olmasına gerek yok.
+    dangerouslyAllowSVG: false,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     // Dış görsel kaynağı (Cloudinary/S3) kullanacaksan buraya ekle:
