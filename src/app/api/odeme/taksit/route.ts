@@ -9,8 +9,22 @@ import { getCartTotals } from "@/lib/cart";
 import { getNumericSetting } from "@/lib/settings";
 import { toProviderPrice } from "@/lib/money";
 import { createId } from "@/lib/id";
+import { isSameOrigin } from "@/lib/security";
+import { checkGenericLimit } from "@/lib/rate-limit";
+import { getRequestInfo } from "@/lib/request-info";
 
 export async function POST(request: Request) {
+  // Yalnızca bu sitenin ödeme sayfasından; IP başına hız sınırı
+  // (kart numarası ön eklerini taramaya ve sağlayıcı kotasını tüketmeye karşı).
+  if (!(await isSameOrigin())) {
+    return Response.json({ ok: false, error: "Geçersiz istek." }, { status: 403 });
+  }
+  const { ip } = await getRequestInfo();
+  const limit = await checkGenericLimit("installments", ip, 20);
+  if (!limit.allowed) {
+    return Response.json({ ok: false, error: limit.message ?? "Çok fazla istek." }, { status: 429 });
+  }
+
   let binNumber = "";
   let couponCode: string | null = null;
   try {

@@ -171,6 +171,13 @@ export async function refundOrderAction(orderId: string) {
   if (!payment?.providerPaymentId) {
     return { ok: false, message: "Bu sipariş için kartlı ödeme kaydı yok." };
   }
+  // Yalnızca başarıyla tahsil edilmiş ödeme iade edilir; iki kez iade edilmez.
+  if (payment.status !== "SUCCESS") {
+    return {
+      ok: false,
+      message: payment.status === "REFUNDED" ? "Bu ödeme zaten iade edilmiş." : "Bu ödeme tahsil edilmemiş.",
+    };
+  }
 
   /*
    * İadeyi ödemeyi İŞLEYEN sağlayıcıya göndeririz, şu an seçili olana değil.

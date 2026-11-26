@@ -7,7 +7,7 @@ import Pagination from "@/components/shop/Pagination";
 
 export const metadata: Metadata = {
   title: "İndirimli Ürünler",
-  description: "İndirimdeki iç giyim ürünleri. Sınırlı stok, kaçırmadan incele.",
+  description: "İndirimdeki cinsel sağlık ve yetişkin ürünleri. Sınırlı stok, kaçırmadan incele.",
   alternates: { canonical: "/indirimli" },
 };
 
@@ -23,7 +23,7 @@ export default async function SalePage(props: PageProps<"/indirimli">) {
     onlyDiscounted: true,
     sizes: toArray(query.beden),
     colors: toArray(query.renk),
-    onlyInStock: query.stok === "1",
+    onlyInStock: query.stok !== "hepsi", // varsayılan: stokta olmayanlar gizli
     maxPrice: query.max ? Number(query.max) : undefined,
     sort: (query.sirala as ProductListOptions["sort"]) ?? "newest",
     page: query.sayfa ? Number(query.sayfa) : 1,

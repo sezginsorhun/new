@@ -28,7 +28,7 @@ function generateCode(): string {
 }
 
 export type IssueResult =
-  | { ok: true; cooldownSeconds: number; devCode?: string }
+  | { ok: true; cooldownSeconds: number }
   | { ok: false; message: string; cooldownSeconds: number };
 
 /** Yeni kod üretir, e-posta ile gönderir. */
@@ -70,23 +70,31 @@ export async function issueTwoFactorCode(user: {
     expiresAt: new Date(Date.now() + CODE_TTL_MINUTES * 60_000),
   });
 
-  await sendTwoFactorCode({
+  const sent = await sendTwoFactorCode({
     to: user.email,
     name: user.firstName,
     code,
     minutes: CODE_TTL_MINUTES,
   });
 
-  // SMTP tanımlı değilse geliştirici kodu konsolda görsün diye döneriz.
-  const smtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER);
-  if (!smtpConfigured) {
-    console.info(`[2FA] ${user.email} için doğrulama kodu: ${code}`);
+  /*
+   * Kod ASLA üretim günlüğüne yazılmaz: barındırma panelinde günlükleri
+   * görebilen herkes ikinci adımı geçebilirdi. Yalnızca yerel geliştirmede,
+   * SMTP yoksa konsolda gösterilir.
+   */
+  if (!sent && process.env.NODE_ENV !== "production") {
+    console.info(`[2FA] geliştirme kodu: ${code}`);
   }
-  return {
-    ok: true,
-    cooldownSeconds: RESEND_COOLDOWN,
-    devCode: smtpConfigured ? undefined : code,
-  };
+  if (!sent) {
+    return {
+      ok: false,
+      message:
+        "Doğrulama kodu e-postayla gönderilemedi. Yedek kodlarından biriyle giriş yap; " +
+        "sonra Panel → Ayarlar → E-posta gönderimi bölümünü kontrol et.",
+      cooldownSeconds: 0,
+    };
+  }
+  return { ok: true, cooldownSeconds: RESEND_COOLDOWN };
 }
 
 export type VerifyResult = { ok: true } | { ok: false; message: string };

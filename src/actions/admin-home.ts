@@ -17,6 +17,7 @@ import { requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin, safeUrl } from "@/lib/security";
 import type { SectionConfig, SectionType } from "@/lib/home";
+import { COLLECTIONS, type CollectionKey } from "@/lib/home-config";
 
 export type ContentState = { ok: boolean; message: string } | null;
 
@@ -34,7 +35,7 @@ function refreshStorefront() {
 /* ========================================================================== */
 
 const SECTION_TYPES = [
-  "hero", "usp", "categories", "products", "promo", "richtext", "newsletter",
+  "hero", "usp", "categories", "products", "promo", "richtext", "newsletter", "collections",
 ] as const;
 
 export async function addSectionAction(type: string): Promise<ContentState> {
@@ -57,6 +58,7 @@ export async function addSectionAction(type: string): Promise<ContentState> {
     promo: { title: "Yeni kampanya", config: { theme: "light", align: "left", overlay: 30, layout: "full" } },
     richtext: { title: "Başlık", config: { maxWidth: 720 } },
     newsletter: { title: "Önce sen haberdar ol", config: { background: "soft" } },
+    collections: { title: null, config: { collections: ["bestsellers", "new", "women", "men", "couples"] } },
   };
 
   const createdId = createId();
@@ -248,6 +250,15 @@ export async function saveSectionAction(
 
     case "newsletter":
       config.background = (str("background") || "soft") as SectionConfig["background"];
+      break;
+
+    case "collections":
+      if (formData.get("collections_present")) {
+        config.collections = formData
+          .getAll("collections")
+          .map(String)
+          .filter((key): key is CollectionKey => key in COLLECTIONS);
+      }
       break;
   }
 

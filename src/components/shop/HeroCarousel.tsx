@@ -84,7 +84,7 @@ export default function HeroCarousel({
     <section
       aria-roledescription="carousel"
       aria-label="Kampanya slaytları"
-      className={`relative overflow-hidden bg-[color:var(--color-surface-3)] ${heightClass}`}
+      className="relative grid overflow-hidden bg-white"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -135,10 +135,46 @@ export default function HeroCarousel({
             aria-roledescription="slayt"
             aria-label={`${i + 1} / ${count}`}
             aria-hidden={!active}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              active ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
+            /*
+             * Tüm slaytlar aynı ızgara hücresinde üst üste durur; kutunun
+             * yüksekliği en uzun slayt kadardır. Böylece hiçbir slayt
+             * sabit bir yüksekliğe sığdırılmak için kırpılmaz.
+             */
+            className={`relative col-start-1 row-start-1 transition-opacity duration-700 ${
+              active ? "z-[2] opacity-100" : "pointer-events-none z-0 opacity-0"
+            } ${sadeceGorsel ? "flex items-center justify-center" : heightClass}`}
           >
+            {sadeceGorsel ? (
+              /*
+               * SADECE GÖRSEL (kampanya afişi): görsel kendi oranında, tam
+               * genişlikte, KIRPILMADAN gösterilir. Afişin üzerindeki yazı
+               * her ekranda eksiksiz kalır. Telefonda ayrı afiş istenirse
+               * panelden "mobil görsel" yüklenir.
+               */
+              <>
+                <Image
+                  src={slide.imageUrl}
+                  alt={slide.imageAlt ?? ""}
+                  width={1920}
+                  height={800}
+                  priority={i === 0}
+                  sizes="100vw"
+                  className={`h-auto max-h-[78vh] w-full object-contain ${slide.mobileImageUrl ? "hidden sm:block" : ""}`}
+                />
+                {slide.mobileImageUrl && (
+                  <Image
+                    src={slide.mobileImageUrl}
+                    alt={slide.imageAlt ?? ""}
+                    width={800}
+                    height={1000}
+                    priority={i === 0}
+                    sizes="100vw"
+                    className="h-auto max-h-[78vh] w-full object-contain sm:hidden"
+                  />
+                )}
+              </>
+            ) : (
+            <>
             {/* Masaüstü görseli */}
             <Image
               src={slide.imageUrl}
@@ -160,6 +196,10 @@ export default function HeroCarousel({
               />
             )}
 
+            </>
+            )}
+
+            {!sadeceGorsel && (
             <div
               className="absolute inset-0"
               style={{
@@ -170,6 +210,7 @@ export default function HeroCarousel({
                     }) 65%)`,
               }}
             />
+            )}
 
             {/*
               Görsel bağlantısı okların ve noktaların ALTINDA kalır (z-10 /
@@ -185,6 +226,7 @@ export default function HeroCarousel({
               />
             )}
 
+            {!sadeceGorsel && (
             <div className="pointer-events-none relative flex h-full items-center">
               <div className="container-page">
                 <div className={`pointer-events-auto flex max-w-[520px] flex-col ${alignClass} ${
@@ -248,6 +290,7 @@ export default function HeroCarousel({
                 </div>
               </div>
             </div>
+            )}
           </div>
         );
       })}

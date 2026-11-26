@@ -23,7 +23,7 @@ import {
   toggleSectionAction,
   type ContentState,
 } from "@/actions/admin-home";
-import { SECTION_TYPES, PRODUCT_SOURCES, USP_ICONS, type HomeSection } from "@/lib/home-config";
+import { SECTION_TYPES, PRODUCT_SOURCES, USP_ICONS, COLLECTIONS, type CollectionKey, type HomeSection } from "@/lib/home-config";
 import MediaPicker from "./MediaPicker";
 
 const TYPE_LABEL = Object.fromEntries(SECTION_TYPES.map((t) => [t.value, t.label]));
@@ -452,8 +452,33 @@ function SectionForm({
         </div>
       )}
 
+      {/* ----------------------- KOLEKSİYON KUTULARI ---------------------- */}
+      {section.type === "collections" && (
+        <fieldset>
+          <legend className="label">Gösterilecek kutular</legend>
+          <input type="hidden" name="collections_present" value="1" />
+          <div className="mt-1 flex flex-wrap gap-x-5 gap-y-2">
+            {(Object.keys(COLLECTIONS) as CollectionKey[]).map((key) => (
+              <label key={key} className="flex items-center gap-2 text-[13px]">
+                <input
+                  type="checkbox"
+                  name="collections"
+                  value={key}
+                  defaultChecked={(config.collections ?? []).includes(key)}
+                  className="h-4 w-4"
+                />
+                {COLLECTIONS[key].title}
+              </label>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[12px] text-[color:var(--color-muted)]">
+            Görseller ilgili koleksiyondaki ürünlerden otomatik seçilir.
+          </p>
+        </fieldset>
+      )}
+
       {/* --------------------------- ORTAK ZEMİN -------------------------- */}
-      {section.type !== "hero" && section.type !== "usp" && section.type !== "promo" && (
+      {section.type !== "hero" && section.type !== "usp" && section.type !== "promo" && section.type !== "collections" && (
         <div className="sm:w-[220px]">
           <label className="label">Zemin rengi</label>
           <select name="background" defaultValue={config.background ?? "white"} className="field">

@@ -47,6 +47,16 @@ export const DEFAULT_SETTINGS = {
   /** WhatsApp sipariş mesajının başı; ürün adı, kodu ve bağlantısı sonuna eklenir */
   whatsapp_message: "Merhaba, bu ürünü sipariş etmek istiyorum:",
 
+  /* --- E-posta gönderimi (SMTP) ---
+   * Panel → Ayarlar → E-posta gönderimi. Yalnızca süper yönetici değiştirir.
+   * Şifre düz metin olarak SAKLANMAZ: smtp_pass_enc AES-GCM ile şifrelidir.
+   * Ortam değişkenleri (SMTP_HOST…) tanımlıysa onlar önceliklidir. */
+  smtp_host: "smtp.hostinger.com",
+  smtp_port: "465",
+  smtp_user: "",
+  smtp_pass_enc: "",
+  mail_from: "",
+
   /* --- Satıcı (şirket) bilgileri ---
    * Mesafeli satış sözleşmesi, iade koşulları ve footer'daki yasal satır
    * bu alanlardan OTOMATİK doldurulur (6563 sayılı Kanun ve Ticari

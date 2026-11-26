@@ -42,7 +42,7 @@ export default async function CategoryPage(props: PageProps<"/kategori/[slug]">)
     categorySlug: slug,
     sizes: toArray(query.beden),
     colors: toArray(query.renk),
-    onlyInStock: query.stok === "1",
+    onlyInStock: query.stok !== "hepsi", // varsayılan: stokta olmayanlar gizli
     maxPrice: query.max ? Number(query.max) : undefined,
     sort: (query.sirala as ProductListOptions["sort"]) ?? "newest",
     page: query.sayfa ? Number(query.sayfa) : 1,

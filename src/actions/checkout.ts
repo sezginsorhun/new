@@ -22,6 +22,7 @@ import {
 import { getPaymentProvider } from "@/lib/payment";
 import { getSettings } from "@/lib/settings";
 import { clientIpFromHeaders } from "@/lib/ip-allowlist";
+import { checkGenericLimit } from "@/lib/rate-limit";
 import { toProviderPrice } from "@/lib/money";
 import { sendAdminOrderNotice, sendOrderConfirmation } from "@/lib/mail";
 import { createId } from "@/lib/id";
@@ -205,6 +206,25 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
   }
 
   /* 6) Kartlı ödeme */
+
+  /*
+   * KART TEST SALDIRISINA KARŞI SINIR
+   * Çalıntı kart numaraları küçük mağazaların ödeme formunda art arda
+   * denenir; bu trafik sanal POS'un kapatılmasına yol açar. IP başına ve
+   * hesap başına 10 dakikada en fazla 5 kartlı ödeme denemesi.
+   */
+  const ipForLimit = await clientIp();
+  const [byIp, byUser] = await Promise.all([
+    checkGenericLimit("card-ip", ipForLimit, 5),
+    checkGenericLimit("card-user", user.id, 5),
+  ]);
+  if (!byIp.allowed || !byUser.allowed) {
+    return {
+      ok: false,
+      error: "Çok fazla ödeme denemesi yapıldı. Lütfen 10 dakika sonra tekrar dene ya da başka bir ödeme yöntemi seç.",
+    };
+  }
+
   const provider = getPaymentProvider();
   if (!provider.isConfigured()) {
     return {
@@ -223,6 +243,12 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
     installment: formData.get("installment") ?? 1,
   });
   if (!cardParsed.success) return { ok: false, error: cardParsed.error.issues[0].message };
+
+  // Panelde izin verilen azami taksidin üstü kabul edilmez (komisyonu satıcı öder).
+  const maxInstallment = Math.max(1, Math.min(12, Number(settings.max_installment) || 1));
+  if (cardParsed.data.installment > maxInstallment) {
+    return { ok: false, error: `En fazla ${maxInstallment} taksit yapılabilir.` };
+  }
 
   const created = await createPendingOrder({
     email: base.data.email,

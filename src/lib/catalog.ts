@@ -258,9 +258,9 @@ export async function listProducts(options: ProductListOptions = {}) {
     newest: [desc(products.createdAt)],
     "price-asc": [asc(products.price)],
     "price-desc": [desc(products.price)],
-    bestseller: [desc(products.soldCount)],
+    bestseller: [desc(products.isBestseller), desc(products.soldCount), desc(products.viewCount)],
     name: [asc(products.name)],
-  }[options.sort ?? "newest"];
+  }[options.sort ?? "newest"] ?? [desc(products.createdAt)]; // bilinmeyen sıralama → en yeniler
 
   const [rows, countRows] = await Promise.all([
     db

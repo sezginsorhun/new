@@ -26,7 +26,7 @@ export default async function AdminThemePage() {
         </p>
       </div>
 
-      <ThemeForm settings={settings} defaults={DEFAULT_SETTINGS} />
+      <ThemeForm settings={{ ...settings, smtp_pass_enc: "" }} defaults={DEFAULT_SETTINGS} />
     </div>
   );
 }

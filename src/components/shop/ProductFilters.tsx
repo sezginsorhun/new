@@ -25,7 +25,8 @@ export default function ProductFilters({
 
   const selectedSizes = params.getAll("beden");
   const selectedColors = params.getAll("renk");
-  const inStockOnly = params.get("stok") === "1";
+  // Varsayılan: stokta olmayanlar gizli. "stok=hepsi" ile hepsi görünür.
+  const hideOutOfStock = params.get("stok") !== "hepsi";
   const maxPrice = params.get("max");
 
   function update(mutate: (next: URLSearchParams) => void) {
@@ -47,7 +48,7 @@ export default function ProductFilters({
   }
 
   const activeCount =
-    selectedSizes.length + selectedColors.length + (inStockOnly ? 1 : 0) + (maxPrice ? 1 : 0);
+    selectedSizes.length + selectedColors.length + (hideOutOfStock ? 0 : 1) + (maxPrice ? 1 : 0);
 
   const panel = (
     <div className="space-y-7">
@@ -146,16 +147,16 @@ export default function ProductFilters({
       <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
         <input
           type="checkbox"
-          checked={inStockOnly}
+          checked={hideOutOfStock}
           onChange={() =>
             update((next) => {
-              if (inStockOnly) next.delete("stok");
-              else next.set("stok", "1");
+              if (hideOutOfStock) next.set("stok", "hepsi");
+              else next.delete("stok");
             })
           }
           className="h-4 w-4 accent-[color:var(--color-brand)]"
         />
-        Sadece stokta olanlar
+        Stokta olmayanları gizle
       </label>
 
       {activeCount > 0 && (

@@ -13,6 +13,7 @@ import {
   Headphones, Gift, Sparkles, Lock, Clock,
 } from "lucide-react";
 import type { HomeSection, SectionConfig, UspItem } from "@/lib/home";
+import { COLLECTIONS, type CollectionKey } from "@/lib/home-config";
 import {
   getBanners,
   getBestsellerProducts,
@@ -469,6 +470,85 @@ function NewsletterSection({ section }: { section: HomeSection }) {
   );
 }
 
+/* ------------------------------ KOLEKSİYONLAR --------------------------- */
+
+/**
+ * Görselli koleksiyon kutuları: açık renkli zemin, solda kısa başlık,
+ * sağda o koleksiyondan bir ürünün fotoğrafı (kırpılmadan). Minimal;
+ * bölümlerin arasında yön göstermek için.
+ */
+async function CollectionsSection({ section }: { section: HomeSection }) {
+  const keys = (section.config.collections ?? []).filter((key): key is CollectionKey => key in COLLECTIONS);
+  if (!keys.length) return null;
+
+  const used = new Set<string>();
+  const pickImage = (list: ProductCardData[]) => {
+    for (const product of list) {
+      const url = product.images[0]?.url;
+      if (url && !used.has(url)) {
+        used.add(url);
+        return { url, alt: product.name };
+      }
+    }
+    return null;
+  };
+
+  const tiles = [];
+  for (const key of keys) {
+    const item = COLLECTIONS[key];
+    const products =
+      key === "bestsellers"
+        ? await getBestsellerProducts(6)
+        : key === "new"
+          ? await getNewProducts(6)
+          : await getProductsByCategorySlug("category" in item ? item.category : "", 6);
+    if (key !== "bestsellers" && key !== "new" && products.length === 0) continue; // kategori yoksa kutu çıkmaz
+    tiles.push({ key, ...item, image: pickImage(products.filter((p) => p.inStock)) });
+  }
+  if (!tiles.length) return null;
+
+  const cols = tiles.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
+
+  return (
+    <section className="py-6 lg:py-8">
+      <div className={`container-page grid grid-cols-1 gap-3 sm:gap-4 ${cols}`}>
+        {tiles.map((tile) => (
+          <Link
+            key={tile.key}
+            href={tile.href}
+            className="group relative flex min-h-[150px] items-center overflow-hidden rounded-[var(--radius-card)] border border-[color:var(--color-line)] transition-shadow hover:shadow-[0_8px_28px_rgba(40,20,70,0.10)] sm:min-h-[190px]"
+            style={{ background: tile.tint }}
+          >
+            <div className="relative z-10 flex-1 py-6 pl-5 pr-2 sm:pl-7">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--color-brand)]">
+                {tile.eyebrow}
+              </p>
+              <h3 className="mt-1.5 text-[21px] font-bold leading-tight tracking-[-0.02em] sm:text-[24px]">
+                {tile.title}
+              </h3>
+              <span className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-[color:var(--color-ink-soft)] group-hover:text-[color:var(--color-brand)]">
+                Keşfet <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </span>
+            </div>
+            {tile.image && (
+              <div className="relative h-[140px] w-[42%] shrink-0 sm:h-[180px]">
+                <div className="absolute inset-3 rounded-[var(--radius-card)] bg-white/70" />
+                <Image
+                  src={tile.image.url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 40vw, 18vw"
+                  className="object-contain p-5 mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+                />
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------- DAĞITICI ------------------------------- */
 
 export default async function SectionRenderer({ section }: { section: HomeSection }) {
@@ -487,6 +567,8 @@ export default async function SectionRenderer({ section }: { section: HomeSectio
       return <RichTextSection section={section} />;
     case "newsletter":
       return <NewsletterSection section={section} />;
+    case "collections":
+      return <CollectionsSection section={section} />;
     default:
       return null;
   }

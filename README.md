@@ -772,6 +772,21 @@ sayfalarında "WhatsApp ile sipariş ver" ve sağ altta sabit düğme çıkar.
 
 **Şifremi unuttum** akışı SMTP ister; SMTP tanımlı değilse bağlantı gönderilemez.
 
+### 9.z E-posta gönderimi ve ödeme güvenliği (Kasım 2026, 2. tur)
+
+- **E-posta (SMTP) artık panelden:** Ayarlar → E-posta Gönderimi (yalnızca süper
+  yönetici). Hostinger için `smtp.hostinger.com`, port 465, kullanıcı e-posta
+  adresi, şifre o e-posta hesabının şifresi. Şifre AES-256-GCM ile şifreli
+  saklanır (`src/lib/secret-box.ts`, anahtar AUTH_SECRET'tan türetilir;
+  AUTH_SECRET değişirse şifre yeniden girilmeli). SMTP_* ortam değişkenleri
+  tanımlıysa onlar önceliklidir.
+- Yönetici doğrulama kodu üretimde **hiçbir zaman** sunucu günlüğüne yazılmaz.
+- Ödeme sonuç sayfası yalnızca siparişin sahibine gösterilir; durum ve hata
+  mesajı adres çubuğundan değil veritabanından okunur.
+- Kartlı ödemede IP ve hesap başına 10 dakikada 5 deneme (kart test saldırısı);
+  taksit sorgusu aynı köken + hız sınırı; azami taksit sunucuda uygulanır;
+  aynı ödeme iki kez iade edilemez.
+
 ## 10. Ana sayfayı panelden yönetmek
 
 Ana sayfada **kodda sabitlenmiş hiçbir bölüm yoktur**. Müşterinin gördüğü her

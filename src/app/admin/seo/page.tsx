@@ -27,7 +27,7 @@ export default async function AdminSeoPage() {
         </p>
       </div>
 
-      <SeoForm settings={settings} siteUrl={siteUrl} />
+      <SeoForm settings={{ ...settings, smtp_pass_enc: "" }} siteUrl={siteUrl} />
     </div>
   );
 }

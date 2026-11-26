@@ -319,6 +319,8 @@ const GENERAL_SETTING_KEYS = new Set(
     (key) =>
       !key.startsWith("theme_") &&
       !key.startsWith("seo_") &&
+      !key.startsWith("smtp_") &&
+      key !== "mail_from" &&
       key !== "custom_css" &&
       key !== "menu_overrides",
   ),

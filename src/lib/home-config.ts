@@ -12,9 +12,20 @@ export type SectionType =
   | "products"
   | "promo"
   | "richtext"
-  | "newsletter";
+  | "newsletter"
+  | "collections";
 
 export type UspItem = { icon: string; title: string; text: string };
+
+/** Ana sayfadaki görselli koleksiyon kutuları */
+export const COLLECTIONS = {
+  bestsellers: { title: "Çok Satanlar", eyebrow: "En sevilenler", href: "/urunler?sirala=bestseller", tint: "#f3eefa" },
+  new: { title: "Yeni Ürünler", eyebrow: "Yeni geldi", href: "/urunler?sirala=newest", tint: "#fde8f0" },
+  women: { title: "Kadınlar İçin", eyebrow: "Kendini keşfet", href: "/kategori/kadin-oyuncaklari", tint: "#fdeef4", category: "kadin-oyuncaklari" },
+  men: { title: "Erkekler İçin", eyebrow: "Daha fazlası", href: "/kategori/erkek-oyuncaklari", tint: "#eef1f8", category: "erkek-oyuncaklari" },
+  couples: { title: "Çiftler İçin", eyebrow: "Birlikte deneyin", href: "/kategori/cift-urunleri", tint: "#f6eefb", category: "cift-urunleri" },
+} as const;
+export type CollectionKey = keyof typeof COLLECTIONS;
 
 export type SectionConfig = {
   /* hero */
@@ -60,6 +71,9 @@ export type SectionConfig = {
   align?: "left" | "center" | "right";
   overlay?: number;
 
+  /* collections — hangi kutular, hangi sırayla */
+  collections?: CollectionKey[];
+
   /* richtext */
   html?: string;
   maxWidth?: number;
@@ -84,6 +98,7 @@ export const SECTION_TYPES: { value: SectionType; label: string; description: st
   { value: "usp", label: "Güven şeridi", description: "Kargo, iade, güvenli ödeme gibi kısa vaatler" },
   { value: "categories", label: "Kategori kutuları", description: "Görselli kategori bağlantıları" },
   { value: "products", label: "Ürün listesi", description: "Öne çıkan / yeni / indirimli / kategori ürünleri" },
+  { value: "collections", label: "Koleksiyon kutuları", description: "Çok satanlar, yeni ürünler, kadınlar/erkekler/çiftler için görselli kutular" },
   { value: "promo", label: "Tanıtım bandı", description: "Tek büyük görsel + başlık + buton" },
   { value: "richtext", label: "Serbest metin", description: "Başlık ve paragraf — marka hikâyesi gibi" },
   { value: "newsletter", label: "Bülten kaydı", description: "E-posta toplama alanı" },

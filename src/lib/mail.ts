@@ -1,38 +1,99 @@
 /**
  * E-POSTA BİLDİRİMLERİ
- * SMTP bilgileri .env'de tanımlı değilse sessizce atlanır (geliştirme kolaylığı).
+ * SMTP: ortam değişkenleri ya da panel → Ayarlar → E-posta gönderimi.
+ * Hiçbiri yoksa e-posta gönderilmez (günlüğe yalnızca konu yazılır).
  */
 
 import "server-only";
 import nodemailer from "nodemailer";
 import { formatPrice } from "@/lib/money";
+import { getSettings } from "@/lib/settings";
+import { openSecret } from "@/lib/secret-box";
 
-function getTransport() {
+export type MailConfig = {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+  source: "env" | "panel";
+};
+
+/**
+ * SMTP ayarı nereden gelir?
+ *  1) Ortam değişkenleri (SMTP_HOST, SMTP_USER, SMTP_PASS) tanımlıysa onlar.
+ *  2) Yoksa panel → Ayarlar → E-posta gönderimi (şifre veritabanında
+ *     AES-GCM ile şifreli; bkz. secret-box.ts).
+ */
+export async function getMailConfig(): Promise<MailConfig | null> {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER) return null;
+  if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+    return {
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT) || 587,
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+      from: process.env.MAIL_FROM || SMTP_USER,
+      source: "env",
+    };
+  }
+  const settings = await getSettings();
+  const pass = openSecret(settings.smtp_pass_enc);
+  const host = (settings.smtp_host ?? "").trim();
+  const user = (settings.smtp_user ?? "").trim();
+  if (!host || !user || !pass) return null;
+  const from = (settings.mail_from ?? "").trim() || `${settings.site_name} <${user}>`;
+  return { host, port: Number(settings.smtp_port) || 465, user, pass, from, source: "panel" };
+}
+
+export async function isMailConfigured(): Promise<boolean> {
+  return (await getMailConfig()) !== null;
+}
+
+function transportFor(config: MailConfig) {
   return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    host: config.host,
+    port: config.port,
+    secure: config.port === 465,
+    auth: { user: config.user, pass: config.pass },
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
   });
 }
 
-async function send(to: string, subject: string, html: string) {
-  const transport = getTransport();
-  if (!transport) {
-    console.info(`[mail atlandı — SMTP tanımsız] ${to} / ${subject}`);
-    return;
+/** Gönderildiyse true. Hata sessizce yutulmaz: günlüğe yazılır. */
+async function send(to: string, subject: string, html: string): Promise<boolean> {
+  const config = await getMailConfig();
+  if (!config) {
+    console.info(`[mail atlandı — SMTP tanımsız] ${subject}`);
+    return false;
   }
   try {
-    await transport.sendMail({
-      from: process.env.MAIL_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      html,
-    });
+    await transportFor(config).sendMail({ from: config.from, to, subject, html });
+    return true;
   } catch (error) {
     console.error("[mail hatası]", (error as Error).message);
+    return false;
+  }
+}
+
+/** Panel → "Deneme e-postası gönder" */
+export async function sendTestMail(to: string, config: MailConfig): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await transportFor(config).sendMail({
+      from: config.from,
+      to,
+      subject: "Deneme e-postası — gönderim çalışıyor",
+      html: layout(
+        "E-posta gönderimi çalışıyor",
+        `<p style="font-size:14px;line-height:1.6">Bu e-posta yönetim panelindeki ayarların doğru olduğunu
+         göstermek için gönderildi. Artık sipariş onayları, kargo bildirimleri, şifre sıfırlama bağlantıları
+         ve yönetici giriş kodları bu adresten gönderilecek.</p>`,
+      ),
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message.slice(0, 300) };
   }
 }
 
@@ -142,8 +203,8 @@ export async function sendTwoFactorCode(params: {
   name: string;
   code: string;
   minutes: number;
-}) {
-  await send(
+}): Promise<boolean> {
+  return send(
     params.to,
     `Yönetim paneli doğrulama kodu: ${params.code}`,
     layout(

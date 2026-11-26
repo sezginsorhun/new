@@ -202,10 +202,10 @@ export async function registerSuccess(userId: string, ip: string): Promise<void>
  * Giriş dışı eylemler için genel sınır (iletişim formu, bülten, kupon denemesi).
  * `key` eylemi ayırt eder: "contact", "coupon" gibi.
  */
-export async function checkGenericLimit(key: string, ip: string): Promise<LimitResult> {
+export async function checkGenericLimit(key: string, ip: string, max: number = LIMITS.genericMax): Promise<LimitResult> {
   const identifier = `${key}:${ip}`.slice(0, 120);
   const used = await countFails(identifier, LIMITS.genericWindowMinutes);
-  if (used >= LIMITS.genericMax) {
+  if (used >= max) {
     const seconds = LIMITS.genericWindowMinutes * 60;
     return {
       allowed: false,

@@ -40,20 +40,44 @@ function normalize(row: typeof homeSections.$inferSelect): HomeSection {
 
 /** Vitrin için: sadece yayındaki bölümler, sıralı. */
 export async function getActiveSections(): Promise<HomeSection[]> {
-  const rows = await db
-    .select()
-    .from(homeSections)
-    .where(eq(homeSections.isActive, true))
-    .orderBy(asc(homeSections.sortOrder));
+  const all = await db.select().from(homeSections).orderBy(asc(homeSections.sortOrder));
   // Kurulumdan kalan demo metinleri ve kırık bağlantılar vitrinde güncellenir.
   const cardPayments = isCardPaymentAvailable();
-  return rows.map((row) => {
-    const section = normalize(row);
-    return refreshSection(
-      { ...section, config: section.config as Record<string, unknown> },
-      { cardPayments },
-    ) as unknown as HomeSection;
-  });
+  const sections = all
+    .filter((row) => row.isActive)
+    .map((row) => {
+      const section = normalize(row);
+      return refreshSection(
+        { ...section, config: section.config as Record<string, unknown> },
+        { cardPayments },
+      ) as unknown as HomeSection;
+    });
+
+  /*
+   * KOLEKSİYON KUTULARI — panelde hiç "Koleksiyon kutuları" bölümü yoksa
+   * iki grup kendiliğinden araya yerleşir: kategorilerden sonra "Çok
+   * satanlar / Yeni ürünler", ilk ürün listesinden sonra "Kadınlar /
+   * Erkekler / Çiftler için". Panelden bir koleksiyon bölümü eklendiği
+   * (ya da eklenip kapatıldığı) anda bu otomatik yerleşim devre dışı kalır.
+   */
+  if (!all.some((row) => row.type === "collections")) {
+    const virtual = (id: string, collections: SectionConfig["collections"]): HomeSection => ({
+      id,
+      type: "collections",
+      title: null,
+      subtitle: null,
+      config: { collections },
+      sortOrder: 0,
+      isActive: true,
+    });
+    const after = (type: string, fallback: number) => {
+      const index = sections.findIndex((section) => section.type === type);
+      return index >= 0 ? index + 1 : Math.min(fallback, sections.length);
+    };
+    sections.splice(after("categories", 2), 0, virtual("auto-collections-1", ["bestsellers", "new"]));
+    sections.splice(after("products", sections.length), 0, virtual("auto-collections-2", ["women", "men", "couples"]));
+  }
+  return sections;
 }
 
 /** Panel için: kapalı olanlar dahil hepsi. */

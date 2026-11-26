@@ -5,6 +5,10 @@ import { findOrderByNumber, getOrderItems } from "@/lib/orders";
 import { getSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { payments } from "@/db/schema";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Sipariş Sonucu",
@@ -13,13 +17,61 @@ export const metadata: Metadata = {
 
 export default async function CheckoutResultPage(props: PageProps<"/odeme/sonuc">) {
   const query = await props.searchParams;
-  const state = typeof query.durum === "string" ? query.durum : "hata";
-  const orderNumber = typeof query.siparis === "string" ? query.siparis : "";
-  const message = typeof query.mesaj === "string" ? query.mesaj : "";
+  const requestedNumber = typeof query.siparis === "string" ? query.siparis.slice(0, 40) : "";
 
-  const order = orderNumber ? await findOrderByNumber(orderNumber) : null;
+  /*
+   * GİZLİLİK: sipariş YALNIZCA sahibine gösterilir. Sipariş numaraları
+   * sıralıdır; kontrol olmasa numaraları deneyen biri başkalarının ne
+   * aldığını görebilirdi.
+   *
+   * Sonuç ve hata mesajı adres çubuğundan DEĞİL, siparişin ve ödemenin
+   * veritabanındaki gerçek durumundan okunur. Böylece "Kartınız bloke,
+   * şu numarayı arayın" gibi sahte bir mesaj içeren bağlantı sitenin
+   * adıyla gösterilemez, başarısız ödeme "alındı" diye görünemez.
+   */
+  const user = await getCurrentUser();
+  const found = requestedNumber && user ? await findOrderByNumber(requestedNumber) : null;
+  const order = found && found.userId === user?.id ? found : null;
+  const orderNumber = order?.orderNumber ?? "";
   const items = order ? await getOrderItems(order.id) : [];
   const settings = await getSettings();
+
+  const succeeded =
+    !!order &&
+    (order.paymentMethod !== "CREDIT_CARD" ||
+      ["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(order.status));
+  const state = succeeded ? "basarili" : "hata";
+  let message = "";
+  if (order && !succeeded) {
+    const [payment] = await db
+      .select({ errorMessage: payments.errorMessage })
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .orderBy(desc(payments.createdAt))
+      .limit(1);
+    message = payment?.errorMessage ?? "";
+  }
+
+  /* ------------- SİPARİŞ GÖRÜNTÜLENEMİYOR (oturum yok / sahibi değil) ------------- */
+  if (!order) {
+    return (
+      <div className="container-page py-20">
+        <div className="mx-auto max-w-[520px] text-center">
+          <CircleAlert size={46} strokeWidth={1.2} className="mx-auto text-[color:var(--color-muted)]" />
+          <h1 className="mt-5 text-[26px]">Siparişini kontrol et</h1>
+          <p className="mt-3 text-[14px] text-[color:var(--color-ink-soft)]">
+            Siparişinin güncel durumunu Hesabım → Siparişlerim bölümünden görebilirsin.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href={user ? "/hesabim/siparisler" : "/giris?next=/hesabim/siparisler"} className="btn-primary">
+              Siparişlerim
+            </Link>
+            <Link href="/iletisim" className="btn-outline">Destek Al</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ------------------------- BAŞARISIZ ------------------------- */
   if (state !== "basarili") {
