@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { loginAction, type AuthState } from "@/actions/auth";
@@ -54,8 +55,10 @@ export default function LoginForm({ next = "" }: { next?: string }) {
         {pending ? "Giriş yapılıyor..." : "Giriş Yap"}
       </button>
 
-      <p className="pt-1 text-center text-[12px] text-[color:var(--color-muted)]">
-        Örnek hesap: musteri@ornek.com / Test123!
+      <p className="pt-1 text-center text-[12.5px]">
+        <Link href="/sifremi-unuttum" className="text-[color:var(--color-ink-soft)] underline">
+          Şifremi unuttum
+        </Link>
       </p>
     </form>
   );

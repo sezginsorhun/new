@@ -20,7 +20,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaAssets } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { verifyCsrfToken, isSameOrigin } from "@/lib/security";
 import { saveImage } from "@/lib/storage";
 import { logAudit } from "@/lib/audit";
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   // 1) Yetki
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requirePermission("content.manage");
   } catch {
     return fail("Yetkisiz.", 403);
   }
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
 /** Medya kütüphanesini listeler (panel içindeki seçici için). */
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requirePermission("content.manage");
   } catch {
     return fail("Yetkisiz.", 403);
   }

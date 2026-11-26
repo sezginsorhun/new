@@ -27,6 +27,7 @@ export async function GET() {
 
   const lines = [
     `IP adresin: ${ip || "okunamadı"}`,
+    `Vekil zinciri (X-Forwarded-For): ${h.get("x-forwarded-for") || "—"}`,
     "",
     rules.length === 0
       ? "Panel IP kısıtı: KAPALI (herkes gizli adresten giriş ekranını görebilir)"

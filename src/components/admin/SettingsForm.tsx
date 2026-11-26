@@ -296,10 +296,77 @@ export default function SettingsForm({
               id="s-wa"
               name="whatsapp_number"
               defaultValue={settings.whatsapp_number ?? ""}
-              placeholder="905551112233"
+              placeholder="905551112233 (başında 90, boşluksuz)"
               className="field"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Satıcı bilgileri */}
+      <section className="card space-y-4 p-5">
+        <div>
+          <h2 className="text-[15px] font-semibold">Satıcı (Şirket) Bilgileri</h2>
+          <p className="mt-1 text-[12.5px] text-[color:var(--color-muted)]">
+            Mesafeli satış sözleşmesi, ön bilgilendirme formu, iade koşulları ve footer&apos;daki
+            yasal satır bu bilgilerle otomatik dolar. Sanal POS başvurusunda ilk kontrol edilen
+            yer burasıdır. Boş bırakılan alan sitede hiç yazılmaz; uydurma değer girme.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="s-ctitle">Ticari unvan / ad soyad</label>
+          <input
+            id="s-ctitle"
+            name="company_title"
+            defaultValue={settings.company_title ?? ""}
+            placeholder="Örn. Ad Soyad (şahıs) ya da ABC Ticaret Ltd. Şti."
+            className="field"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="s-ctaxo">Vergi dairesi</label>
+            <input id="s-ctaxo" name="company_tax_office" defaultValue={settings.company_tax_office ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-ctaxn">Vergi no / T.C. kimlik no</label>
+            <input id="s-ctaxn" name="company_tax_number" defaultValue={settings.company_tax_number ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-cmersis">MERSIS no (yalnızca şirketler)</label>
+            <input id="s-cmersis" name="company_mersis" defaultValue={settings.company_mersis ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-ckep">KEP adresi</label>
+            <input id="s-ckep" name="company_kep" defaultValue={settings.company_kep ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-cetbis">ETBİS kayıt no</label>
+            <input
+              id="s-cetbis"
+              name="company_etbis"
+              defaultValue={settings.company_etbis ?? ""}
+              placeholder="Kayıt yaptırdıysan doldur"
+              className="field"
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="s-chours">Çalışma saatleri</label>
+            <input id="s-chours" name="contact_hours" defaultValue={settings.contact_hours ?? ""} className="field" />
+          </div>
+        </div>
+        <div>
+          <label className="label" htmlFor="s-wamsg">WhatsApp sipariş mesajı</label>
+          <input
+            id="s-wamsg"
+            name="whatsapp_message"
+            defaultValue={settings.whatsapp_message ?? ""}
+            className="field"
+          />
+          <p className="mt-1 text-[12px] text-[color:var(--color-muted)]">
+            Müşteri ürün sayfasında &quot;WhatsApp ile sipariş ver&quot;e bastığında bu metnin sonuna
+            ürün adı, kodu, fiyatı ve bağlantısı eklenir.
+          </p>
         </div>
       </section>
 

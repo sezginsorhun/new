@@ -554,10 +554,14 @@ export default function CheckoutForm({
               className="mt-0.5 h-4 w-4 accent-[color:var(--color-brand)]"
             />
             <span>
-              <Link href="/sayfa/mesafeli-satis-sozlesmesi" target="_blank" className="underline">
-                Mesafeli satış sözleşmesini
+              <Link href="/sayfa/on-bilgilendirme" target="_blank" className="underline">
+                Ön bilgilendirme formunu
               </Link>{" "}
-              ve ön bilgilendirme formunu okudum, onaylıyorum. *
+              ve{" "}
+              <Link href="/sayfa/mesafeli-satis" target="_blank" className="underline">
+                mesafeli satış sözleşmesini
+              </Link>{" "}
+              okudum, onaylıyorum. 18 yaşından büyüğüm. *
             </span>
           </label>
         </section>

@@ -189,10 +189,18 @@ export async function createPendingOrder(
  */
 export async function markOrderPaid(orderId: string) {
   await db.transaction(async (tx) => {
-    const rows = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    // Satır kilidi: aynı anda gelen iki geri dönüş stoğu iki kez düşmesin.
+    const rows = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1)
+      .for("update");
     const order = rows[0];
     if (!order) throw new Error("Sipariş bulunamadı.");
-    if (order.status === "PAID" || order.status === "PREPARING") return; // zaten işlenmiş
+    // Yalnızca ödeme bekleyen (ya da 3D adımında yanlışlıkla başarısız
+    // sayılmış) sipariş ödendi yapılır; ilerlemiş/iptal edilmiş olana dokunulmaz.
+    if (order.status !== "PENDING" && order.status !== "FAILED") return;
 
     const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 
@@ -276,6 +284,12 @@ export async function reserveStockForOrder(orderId: string) {
 
 /** Ödeme başarısız olduğunda siparişi işaretle. */
 export async function markOrderFailed(orderId: string, reason: string) {
+  /*
+   * Yalnızca hâlâ ödeme bekleyen sipariş başarısız sayılabilir.
+   * Ödeme geri dönüşü (callback) kimlik doğrulamasız bir adrestir; aynı
+   * istek tekrar gönderilirse ya da ikinci bir sahte istek gelirse, ödenmiş
+   * bir sipariş "başarısız"a düşürülmemeli.
+   */
   await db
     .update(orders)
     .set({
@@ -284,7 +298,7 @@ export async function markOrderFailed(orderId: string, reason: string) {
       adminNote: reason.slice(0, 500),
       updatedAt: sql`now()`,
     })
-    .where(eq(orders.id, orderId));
+    .where(and(eq(orders.id, orderId), eq(orders.status, "PENDING")));
 }
 
 /** Sipariş iptal/iade edilince stoğu geri ekler. */

@@ -24,6 +24,7 @@ export type AuditAction =
   | "auth.locked"
   | "auth.session_revoked"
   | "auth.password_changed"
+  | "auth.password_reset_requested"
   | "auth.email_changed"
   | "product.create"
   | "product.update"

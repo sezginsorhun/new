@@ -740,6 +740,38 @@ görürsün.
 
 ---
 
+### 9.x Kasım 2026 güvenlik denetimi — kapatılan açıklar
+
+| Açık | Etkisi | Düzeltme |
+|---|---|---|
+| Ödeme geri dönüşünde tutar kontrolü yoktu | Ucuz bir siparişin ödeme kimliğiyle pahalı sipariş "ödendi" yapılabilirdi | Sağlayıcının döndürdüğü tutar, conversationId ve sepet no siparişle karşılaştırılır; uymazsa ödeme iptal edilir |
+| Geri dönüş tekrar işlenebiliyordu | Ödenmiş sipariş sahte istekle "başarısız"a düşürülebilirdi | Sonuçlanmış ödeme bir daha işlenmez, ödenmiş sipariş başarısız yapılamaz, satır kilidi |
+| Sepete eksi/kesirli adet | Sepet toplamı düşürülebilirdi | Yalnızca 1–99 arası tam sayı |
+| Personel rolleri her işlemi yapabiliyordu | Ör. katalog sorumlusu IBAN'ı değiştirebilir, iade yapabilirdi | Her yönetim eylemi kendi yetkisini ister; ayarlar formu beyaz listeli |
+| IP, X-Forwarded-For'un ilk değerinden okunuyordu | IP sınırı ve panel IP kısıtı sahte başlıkla atlatılabilirdi | Vekilin eklediği son değer okunur (`TRUSTED_PROXY_HOPS`, varsayılan 1) |
+| Açık yönlendirme (`/giris?next=https://…`) | Oltalama | Yalnızca site içi yollar |
+| E-postalarda kaçışlanmamış müşteri adı | Resmî e-postaya bağlantı enjekte edilebilirdi | Tüm değerler kaçışlanır |
+| İletişim/bülten/kupon sınırsız | Spam, kupon deneme-yanılma | IP başına hız sınırı |
+| Giriş sayfasında örnek hesap şifresi | Demo hesaba herkes girebilirdi | Metin kaldırıldı; demo müşteri her dağıtımda kapatılır (`src/db/harden.ts`) |
+| Varsayılan yönetici şifresi | README'de açık yazılı | Panelde kırmızı uyarı; derleme günlüğünde uyarı |
+
+Panel IP kısıtını açmadan önce `/api/ip` adresinde "Vekil zinciri" satırına bak:
+gerçek IP'n zincirin son değeri olmalı. Değilse `TRUSTED_PROXY_HOPS` değerini ayarla.
+
+### 9.y Satıcı bilgileri ve yasal sayfalar
+
+Panel → Ayarlar → **Satıcı (Şirket) Bilgileri** doldurulunca mesafeli satış
+sözleşmesi, ön bilgilendirme formu, iade koşulları, KVKK metni ve footer'daki
+yasal satır otomatik dolar (`src/lib/legal-pages.ts`). Panelde bir sayfayı
+kendin kaydedersen o geçerli olur. Boş bırakılan bilgi sitede hiç yazılmaz;
+eski kurulumdan kalan `0850 000 00 00`, `TR00 0000…`, `0000000000000` gibi
+örnek değerler de otomatik gizlenir (`src/lib/settings-normalize.ts`).
+
+**WhatsApp:** Ayarlar → İletişim → WhatsApp numarası girildiğinde ürün
+sayfalarında "WhatsApp ile sipariş ver" ve sağ altta sabit düğme çıkar.
+
+**Şifremi unuttum** akışı SMTP ister; SMTP tanımlı değilse bağlantı gönderilemez.
+
 ## 10. Ana sayfayı panelden yönetmek
 
 Ana sayfada **kodda sabitlenmiş hiçbir bölüm yoktur**. Müşterinin gördüğü her

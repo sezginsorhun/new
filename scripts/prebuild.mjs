@@ -258,3 +258,15 @@ if (process.env.IMPORT_CATALOG === "1") {
     process.exit(1);
   }
 }
+
+/* 6) Güvenlik sıkılaştırması ------------------------------------------
+ * EN SONDA: örnek veriler (AUTO_SEED) yüklendikten sonra çalışmalı.
+ * Örnek müşteri hesabını kapatır, varsayılan yönetici şifresi kullanılıyorsa
+ * uyarır. Hata verse bile derlemeyi durdurmaz. */
+if (process.env.DATABASE_URL) {
+  spawnSync("npx", ["tsx", "src/db/harden.ts"], {
+    stdio: "inherit",
+    env: process.env,
+    shell: process.platform === "win32",
+  });
+}

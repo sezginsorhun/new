@@ -69,7 +69,9 @@ export function safeRedirectPath(value: unknown, fallback: string): string {
   const path = typeof value === "string" ? value.trim() : "";
   if (!path.startsWith("/")) return fallback;
   if (path.startsWith("//") || path.startsWith("/\\")) return fallback; // //evil.com
-  if (/[\r\n]/.test(path)) return fallback;
+  // Tarayıcılar sekme/satır sonunu siler ("/\t/evil.com" → "//evil.com"),
+  // ters bölüyü "/" sayar. Bu karakterlerin hiçbiri meşru bir yolda yok.
+  if (/[\u0000-\u001f\u007f\\]/.test(path)) return fallback;
   return path;
 }
 
@@ -103,11 +105,40 @@ export function sanitizeRichText(html: string): string {
     .replace(/javascript:/gi, "")
     .replace(/data:text\/html/gi, "");
 
-  // İzin verilmeyen etiketleri sök (içeriği kalsın)
-  out = out.replace(/<\/?([a-zA-Z0-9]+)([^>]*)>/g, (match, tag: string) =>
-    ALLOWED_TAGS.test(tag) ? match : "",
-  );
+  // İzin verilmeyen etiketleri sök (içeriği kalsın). İzin verilenlerin
+  // öznitelikleri de beyaz listeyle YENİDEN kurulur: yalnızca <a href> ve
+  // title kalır; href, HTML varlıkları çözüldükten sonra safeUrl'den geçer
+  // ("jav&#x61;script:" gibi kodlanmış adresler de böylece düşer).
+  out = out.replace(/<(\/?)([a-zA-Z0-9]+)([^>]*)>/g, (_match, slash: string, tag: string, attrs: string) => {
+    if (!ALLOWED_TAGS.test(tag)) return "";
+    const name = tag.toLowerCase();
+    if (slash) return `</${name}>`;
+    const kept: string[] = [];
+    for (const m of attrs.matchAll(/([a-zA-Z-]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/g)) {
+      const attr = m[1].toLowerCase();
+      const value = decodeEntities(m[3] ?? m[4] ?? m[5] ?? "");
+      if (attr === "title") kept.push(`title="${escapeHtml(value)}"`);
+      if (attr === "href" && name === "a") {
+        const href = safeUrl(value.replace(/[\u0000-\u0020]/g, ""));
+        if (href) kept.push(`href="${escapeHtml(href)}" rel="noopener nofollow"`);
+      }
+    }
+    return `<${name}${kept.length ? " " + kept.join(" ") : ""}>`;
+  });
   return out;
+}
+
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16) || 32))
+    .replace(/&#(\d+);?/g, (_, dec: string) => String.fromCodePoint(Number(dec) || 32))
+    .replace(/&colon;/gi, ":")
+    .replace(/&tab;|&newline;/gi, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;|&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 /** Dış bağlantıya izin verilen protokoller. */

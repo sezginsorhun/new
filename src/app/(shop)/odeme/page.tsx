@@ -65,7 +65,7 @@ export default async function CheckoutPage(props: PageProps<"/odeme">) {
         defaultPhone={user?.phone ?? ""}
         cardEnabled={settings.payment_credit_card === "1" && isCardPaymentAvailable()}
         cardConfigured={isCardPaymentAvailable()}
-        transferEnabled={settings.payment_bank_transfer === "1"}
+        transferEnabled={settings.payment_bank_transfer === "1" && Boolean(settings.bank_accounts.trim())}
         codEnabled={settings.payment_cod === "1"}
         codFee={Number(settings.cod_fee) || 0}
         bankAccounts={settings.bank_accounts}

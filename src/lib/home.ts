@@ -9,6 +9,8 @@
  * Tipler ve panel sabitleri src/lib/home-config.ts dosyasındadır.
  */
 
+import { refreshSection } from "@/lib/legacy-copy";
+import { isCardPaymentAvailable } from "@/lib/payment";
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -43,7 +45,15 @@ export async function getActiveSections(): Promise<HomeSection[]> {
     .from(homeSections)
     .where(eq(homeSections.isActive, true))
     .orderBy(asc(homeSections.sortOrder));
-  return rows.map(normalize);
+  // Kurulumdan kalan demo metinleri ve kırık bağlantılar vitrinde güncellenir.
+  const cardPayments = isCardPaymentAvailable();
+  return rows.map((row) => {
+    const section = normalize(row);
+    return refreshSection(
+      { ...section, config: section.config as Record<string, unknown> },
+      { cardPayments },
+    ) as unknown as HomeSection;
+  });
 }
 
 /** Panel için: kapalı olanlar dahil hepsi. */

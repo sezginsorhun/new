@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, payments } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin } from "@/lib/security";
 import { markOrderPaid, restoreStockForOrder } from "@/lib/orders";
@@ -30,7 +30,7 @@ type OrderStatus = (typeof ALLOWED_STATUSES)[number];
 /** Sipariş durumunu değiştirir; iptal/iade durumunda stoğu geri ekler. */
 export async function updateOrderStatusAction(orderId: string, status: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("orders.manage");
   await logAudit({ action: "order.status", userId: admin.id, actorEmail: admin.email,
     entity: "order", entityId: orderId, summary: `Durum: ${status}` });
   if (!ALLOWED_STATUSES.includes(status as OrderStatus)) {
@@ -92,7 +92,7 @@ export async function setShippingAction(
   formData: FormData,
 ): Promise<OrderActionState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("orders.manage");
 
   const orderId = String(formData.get("orderId") ?? "");
   const company = String(formData.get("shippingCompany") ?? "").trim();
@@ -130,7 +130,7 @@ export async function setAdminNoteAction(
   formData: FormData,
 ): Promise<OrderActionState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("orders.manage");
   const orderId = String(formData.get("orderId") ?? "");
   const note = String(formData.get("adminNote") ?? "").slice(0, 2000);
 
@@ -146,7 +146,7 @@ export async function setAdminNoteAction(
  */
 export async function refundOrderAction(orderId: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("orders.manage");
   await logAudit({ action: "order.refund", userId: admin.id, actorEmail: admin.email,
     entity: "order", entityId: orderId });
 

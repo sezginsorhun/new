@@ -8,7 +8,7 @@
 
 import "server-only";
 import { cookies } from "next/headers";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   carts,
@@ -176,7 +176,21 @@ async function mergeGuestCart(guestToken: string, targetCartId: string) {
 
 /* ---------------------------- SEPET İŞLEMLERİ --------------------------- */
 
+/** Sepete yazılabilecek adet: 1 ile 99 arası TAM sayı. */
+const MAX_LINE_QUANTITY = 99;
+function isValidQuantity(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= MAX_LINE_QUANTITY;
+}
+
 export async function addToCart(variantId: string, quantity = 1) {
+  /*
+   * Adet tarayıcıdan gelir. Eksi ya da kesirli adet kabul edilirse sepet
+   * toplamı düşürülebilir (ör. bir ürünü -1 adet ekleyip diğerinin
+   * fiyatından düşmek). Bu yüzden yalnızca pozitif tam sayı geçer.
+   */
+  if (typeof variantId !== "string" || !variantId || !isValidQuantity(quantity)) {
+    return { ok: false as const, error: "Geçersiz adet." };
+  }
   const cart = await getOrCreateCart();
 
   const variant = await db
@@ -199,6 +213,9 @@ export async function addToCart(variantId: string, quantity = 1) {
     .limit(1);
 
   const desired = (existing[0]?.quantity ?? 0) + quantity;
+  if (desired > MAX_LINE_QUANTITY) {
+    return { ok: false as const, error: `Bir üründen en fazla ${MAX_LINE_QUANTITY} adet alınabilir.` };
+  }
   if (desired > variant[0].stock) {
     return {
       ok: false as const,
@@ -221,6 +238,10 @@ export async function updateCartItem(itemId: string, quantity: number) {
   const cart = await findCart();
   if (!cart) return { ok: false as const, error: "Sepet bulunamadı." };
 
+  if (typeof itemId !== "string" || !itemId) return { ok: false as const, error: "Geçersiz istek." };
+  if (typeof quantity !== "number" || !Number.isInteger(quantity) || quantity > MAX_LINE_QUANTITY) {
+    return { ok: false as const, error: "Geçersiz adet." };
+  }
   if (quantity <= 0) {
     await db
       .delete(cartItems)
@@ -304,21 +325,23 @@ export async function getCartTotals(couponCode?: string | null): Promise<CartTot
 
   if (rows.length === 0) return empty;
 
-  // Kapak görsellerini tek sorguda çek
+  // Kapak görsellerini tek sorguda çek — yalnızca sepetteki ürünlerin
   const imageRows = await db
     .select({
       productId: productImages.productId,
       url: productImages.url,
       sortOrder: productImages.sortOrder,
     })
-    .from(productImages);
+    .from(productImages)
+    .where(inArray(productImages.productId, [...new Set(rows.map((r) => r.productId))]));
   const coverByProduct = new Map<string, string>();
   for (const img of imageRows.sort((a, b) => a.sortOrder - b.sortOrder)) {
     if (!coverByProduct.has(img.productId)) coverByProduct.set(img.productId, img.url);
   }
 
   const lines: CartLine[] = rows
-    .filter((r) => r.isActive)
+    // Eski kayıtlarda kalmış olabilecek geçersiz adetler toplama hiç girmez.
+    .filter((r) => r.isActive && Number.isInteger(r.quantity) && r.quantity > 0)
     .map((r) => {
       const unitPrice = r.priceOverride ?? r.productPrice;
       const quantity = Math.min(r.quantity, Math.max(r.stock, 0));

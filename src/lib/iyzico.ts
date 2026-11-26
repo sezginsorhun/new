@@ -254,6 +254,8 @@ export type Complete3DSResult =
       paymentId: string;
       paymentTransactionId?: string;
       paidPrice: string;
+      conversationId?: string;
+      basketId?: string;
       installment: number;
       cardFamily?: string;
       cardAssociation?: string;
@@ -280,6 +282,8 @@ export async function complete3DSecure(
       IyzicoResponse & {
         paymentId?: string;
         paidPrice?: string;
+        conversationId?: string;
+        basketId?: string;
         installment?: number;
         cardFamily?: string;
         cardAssociation?: string;
@@ -303,6 +307,8 @@ export async function complete3DSecure(
       paymentId: String(res.paymentId ?? paymentId),
       paymentTransactionId: res.itemTransactions?.[0]?.paymentTransactionId,
       paidPrice: String(res.paidPrice ?? "0"),
+      conversationId: res.conversationId,
+      basketId: res.basketId,
       installment: Number(res.installment ?? 1),
       cardFamily: res.cardFamily,
       cardAssociation: res.cardAssociation,

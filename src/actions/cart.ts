@@ -9,6 +9,9 @@ import {
   getCartTotals,
 } from "@/lib/cart";
 
+import { checkGenericLimit } from "@/lib/rate-limit";
+import { getRequestInfo } from "@/lib/request-info";
+
 export type CartActionResult = { ok: boolean; message?: string };
 
 export async function addToCartAction(
@@ -44,6 +47,15 @@ export async function removeCartItemAction(itemId: string): Promise<CartActionRe
 
 /** Kupon kodunu doğrular; geçerliyse indirim tutarını geri döner. */
 export async function checkCouponAction(code: string) {
+  // Kupon kodları deneme-yanılma ile bulunamasın.
+  if (typeof code !== "string" || code.length > 60) {
+    return { ok: false as const, message: "Geçersiz kupon kodu." };
+  }
+  const { ip } = await getRequestInfo();
+  const limit = await checkGenericLimit("coupon", ip);
+  if (!limit.allowed) {
+    return { ok: false as const, message: limit.message ?? "Çok fazla deneme yaptın." };
+  }
   const totals = await getCartTotals();
   if (totals.subtotal === 0) {
     return { ok: false as const, message: "Sepetin boş." };

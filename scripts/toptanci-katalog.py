@@ -5,7 +5,7 @@ TOPTANCI KATALOĞU ÜRETİCİ
 İki tedarikçiden ürünleri çeker, mağazaya uygun hale getirir ve şunları yazar:
 
   src/db/katalog-toptanci.json   → `import-toptanci.ts` bunu veritabanına yükler
-  public/images/urunler/*.webp   → ürün fotoğrafları (600 px, WebP)
+  public/images/urunler/*.webp   → ürün fotoğrafları (1000 px, WebP)
 
 Kaynaklar
   - toptanerotikshop.com  WooCommerce Store API (herkese açık): ad, açıklama,
@@ -58,7 +58,7 @@ CACHE = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / ".cache/toptanci"
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36"
 MAX_IMAGES = 3
-IMG_WIDTH = 600
+IMG_WIDTH = 1000
 
 
 # --------------------------------------------------------------------- ağ
@@ -444,7 +444,7 @@ def save_image(url: str, dest: Path) -> bool:
         if im.width > IMG_WIDTH:
             im = im.resize((IMG_WIDTH, round(im.height * IMG_WIDTH / im.width)), Image.LANCZOS)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        im.save(dest, "WEBP", quality=74, method=5)
+        im.save(dest, "WEBP", quality=80, method=5)
         return True
     except Exception as exc:  # noqa: BLE001
         print(f"  ! görsel alınamadı {url}: {exc}", file=sys.stderr)

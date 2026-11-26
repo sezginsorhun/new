@@ -12,7 +12,7 @@ import {
   products,
   stockMovements,
 } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin } from "@/lib/security";
 import { slugify } from "@/lib/utils";
@@ -73,7 +73,7 @@ export async function saveProductAction(
   formData: FormData,
 ): Promise<AdminState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
 
   const parsed = productSchema.safeParse(readProductForm(formData));
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
@@ -186,7 +186,7 @@ export async function saveProductAction(
 
 export async function deleteProductAction(id: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   await logAudit({ action: "product.delete", userId: admin.id, actorEmail: admin.email,
     entity: "product", entityId: id });
   await db.delete(products).where(eq(products.id, id));
@@ -197,7 +197,7 @@ export async function deleteProductAction(id: string) {
 
 export async function toggleProductActiveAction(id: string, isActive: boolean) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   await logAudit({ action: "product.update", userId: admin.id, actorEmail: admin.email,
     entity: "product", entityId: id, summary: isActive ? "Ürün yayına alındı" : "Ürün gizlendi" });
   await db.update(products).set({ isActive }).where(eq(products.id, id));
@@ -215,7 +215,7 @@ export async function addProductImageAction(
   alt: string | null,
 ) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   if (!url.trim()) return { ok: false, message: "Görsel adresi boş." };
 
   const existing = await db
@@ -237,7 +237,7 @@ export async function addProductImageAction(
 
 export async function deleteProductImageAction(imageId: string, productId: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   await db.delete(productImages).where(eq(productImages.id, imageId));
   revalidatePath(`/admin/urunler/${productId}`);
   return { ok: true };
@@ -249,7 +249,7 @@ export async function reorderProductImageAction(
   direction: "up" | "down",
 ) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   const images = await db
     .select()
     .from(productImages)
@@ -294,7 +294,7 @@ export async function saveVariantAction(
   formData: FormData,
 ): Promise<AdminState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
 
   const productId = String(formData.get("productId") ?? "");
   if (!productId) return { ok: false, message: "Ürün bulunamadı." };
@@ -384,7 +384,7 @@ export async function saveVariantAction(
 
 export async function deleteVariantAction(variantId: string, productId: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   await db.delete(productVariants).where(eq(productVariants.id, variantId));
   revalidatePath(`/admin/urunler/${productId}`);
   return { ok: true };
@@ -393,7 +393,7 @@ export async function deleteVariantAction(variantId: string, productId: string) 
 /** Hızlı stok güncelleme (stok sayfasından) */
 export async function updateStockAction(variantId: string, stock: number) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("stock.manage");
   await logAudit({ action: "stock.update", userId: admin.id, actorEmail: admin.email,
     entity: "variant", entityId: variantId, summary: `Stok ${stock} olarak ayarlandı` });
   if (stock < 0) return { ok: false, message: "Stok negatif olamaz." };
@@ -431,7 +431,7 @@ export async function generateVariantsAction(
   stock: number,
 ) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
   if (colors.length === 0 || sizes.length === 0) {
     return { ok: false, message: "En az bir renk ve bir beden gir." };
   }
@@ -505,7 +505,7 @@ export async function generateVariantsAction(
  */
 export async function createMissingVariantsAction(): Promise<AdminState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("products.manage");
 
   const eksik = await db
     .select({ id: products.id, sku: products.sku, name: products.name })

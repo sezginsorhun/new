@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { safeRedirectPath } from "@/lib/security";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import RegisterForm from "@/components/shop/RegisterForm";
@@ -14,7 +15,8 @@ export default async function RegisterPage(props: PageProps<"/kayit">) {
   const query = await props.searchParams;
   const next = typeof query.next === "string" ? query.next : "";
 
-  if (session) redirect(next || "/hesabim");
+  // `next` dışarıdan gelir: yalnızca site içi yollara yönlendirilir (açık yönlendirme koruması).
+  if (session) redirect(safeRedirectPath(next, "/hesabim"));
 
   return (
     <div className="container-page py-16">

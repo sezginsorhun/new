@@ -3,13 +3,14 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Heart, Minus, Plus, Ruler, ShoppingBag, Truck } from "lucide-react";
+import { Check, Heart, Lock, Minus, Package, Plus, RotateCcw, Ruler, ShieldCheck, ShoppingBag, Truck } from "lucide-react";
 import type { ProductVariant } from "@/db/schema";
 import { discountPercent, formatPrice } from "@/lib/money";
 import { addToCartAction } from "@/actions/cart";
 import { toggleFavoriteAction } from "@/actions/account";
 import ProductGallery, { type GalleryImage } from "./ProductGallery";
 import SizeGuideDialog from "./SizeGuideDialog";
+import WhatsAppIcon from "./WhatsAppIcon";
 
 export default function ProductBuyBox({
   productId,
@@ -20,6 +21,7 @@ export default function ProductBuyBox({
   variants,
   isFavorite,
   freeShippingThreshold,
+  whatsapp,
 }: {
   productId: string;
   productName: string;
@@ -29,6 +31,8 @@ export default function ProductBuyBox({
   variants: ProductVariant[];
   isFavorite: boolean;
   freeShippingThreshold: number;
+  /** Panelde WhatsApp numarası girildiyse "WhatsApp ile sipariş ver" çıkar */
+  whatsapp?: { number: string; message: string; sku: string; url: string } | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -292,6 +296,28 @@ export default function ProductBuyBox({
           </button>
         </div>
 
+        {whatsapp && (
+          <a
+            href={whatsappHref(whatsapp, {
+              productName,
+              variant: selectedVariant
+                ? [selectedVariant.colorName, selectedVariant.size]
+                    .filter((part) => part && part !== "Standart" && part !== "Tek ebat")
+                    .join(" / ")
+                : "",
+              quantity,
+              price: formatPrice(activePrice),
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex w-full items-center justify-center gap-2 border border-[#1fa855] bg-[#25d366] px-6 py-3.5 text-[13px] font-semibold text-[#0b3d1f] transition-colors hover:bg-[#1fbe5b]"
+            style={{ borderRadius: "var(--radius-card)" }}
+          >
+            <WhatsAppIcon size={18} />
+            WhatsApp ile sipariş ver
+          </a>
+        )}
+
         {feedback && (
           <p
             role="status"
@@ -306,12 +332,31 @@ export default function ProductBuyBox({
         </>
         )}
 
+        {/* Güvenceler */}
+        <ul className="mt-6 grid gap-2 text-[12.5px] text-[color:var(--color-ink-soft)] sm:grid-cols-2">
+          <li className="flex items-center gap-2">
+            <Package size={15} strokeWidth={1.5} className="shrink-0" /> Düz kolide, isimsiz gönderim
+          </li>
+          <li className="flex items-center gap-2">
+            <ShieldCheck size={15} strokeWidth={1.5} className="shrink-0" /> Orijinal, faturalı ürün
+          </li>
+          <li className="flex items-center gap-2">
+            <RotateCcw size={15} strokeWidth={1.5} className="shrink-0" />
+            <Link href="/sayfa/iade-degisim" className="underline-offset-2 hover:underline">
+              Açılmamış üründe 14 gün iade
+            </Link>
+          </li>
+          <li className="flex items-center gap-2">
+            <Lock size={15} strokeWidth={1.5} className="shrink-0" /> Kart bilgisi saklanmaz
+          </li>
+        </ul>
+
         {/* Kargo bilgisi */}
         <div className="mt-6 flex items-start gap-2.5 border border-[color:var(--color-line)] bg-white p-3.5 text-[12.5px] text-[color:var(--color-ink-soft)]">
           <Truck size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-brand)]" />
           <span>
             {formatPrice(freeShippingThreshold)} ve üzeri siparişlerde <strong>kargo ücretsiz</strong>.
-            Saat 15:00&apos;e kadar verilen siparişler aynı gün kargoda.
+            Hafta içi 15:00&apos;e kadar verilen siparişler genellikle aynı gün kargoya verilir.
           </span>
         </div>
       </div>
@@ -319,4 +364,22 @@ export default function ProductBuyBox({
       <SizeGuideDialog open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </div>
   );
+}
+
+/** wa.me bağlantısı: mesajda ürün, seçenek, adet, fiyat, kod ve adres hazır gelir. */
+function whatsappHref(
+  wa: { number: string; message: string; sku: string; url: string },
+  item: { productName: string; variant: string; quantity: number; price: string },
+) {
+  const lines = [
+    wa.message || "Merhaba, bu ürünü sipariş etmek istiyorum:",
+    "",
+    `Ürün: ${item.productName}`,
+    item.variant ? `Seçenek: ${item.variant}` : "",
+    `Adet: ${item.quantity}`,
+    `Fiyat: ${item.price}`,
+    `Ürün kodu: ${wa.sku}`,
+    wa.url,
+  ].filter((line, index) => line || index === 1);
+  return `https://wa.me/${wa.number}?text=${encodeURIComponent(lines.join("\n"))}`;
 }

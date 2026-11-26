@@ -86,6 +86,20 @@ const CATEGORY_TEXT: Record<string, string> = {
   Premium: "Seks makineleri ve realistik mankenler.",
 };
 
+/*
+ * KATALOG BAKIMI — göz kontrolüyle belirlenmiş istisnalar
+ *
+ * Tedarikçinin birkaç ürününde yalnızca masa üstünde, poşet içinde çekilmiş
+ * amatör fotoğraf var; vitrinde ("Yeni gelenler", kategori kutuları) mağazayı
+ * özensiz gösteriyorlar. Bunlar yayından kaldırılır (silinmez). Kapağı
+ * amatör olup başka bir stüdyo fotoğrafı bulunan üründe kapak değişir.
+ * Görselini panelden değiştirdiğin ürüne dokunulmaz.
+ */
+const HIDE_AMATEUR_PHOTO = ["el-ayak-baglama-seti", "boyun-tasmasi-5-renk"];
+/** slug → kapak yapılacak görselin dosya numarası (…-2.webp gibi) */
+const COVER_OVERRIDE: Record<string, number> = { "teleskopik-vibrator-kutusu-yirtik": 2 };
+const isImportedImage = (url: string) => url.startsWith("/images/urunler/");
+
 const COLOR_HEX: Record<string, string> = {
   Siyah: "#1f1b1d",
   Beyaz: "#f4f1ee",
@@ -276,6 +290,56 @@ async function run() {
     if (stats.urun % 100 === 0) console.log(`  … ${stats.urun} ürün eklendi`);
   }
 
+  /* ---------------------------------------------------- katalog bakımı */
+  let maintenance = 0;
+  const amateurUrls = new Set<string>();
+  const productRows = await db
+    .select({ id: products.id, slug: products.slug, isActive: products.isActive })
+    .from(products)
+    .where(inArray(products.slug, [...HIDE_AMATEUR_PHOTO, ...Object.keys(COVER_OVERRIDE)]));
+  for (const row of productRows) {
+    const images = await db
+      .select({ id: productImages.id, url: productImages.url, sortOrder: productImages.sortOrder })
+      .from(productImages)
+      .where(eq(productImages.productId, row.id));
+    if (!images.length || !images.every((img) => isImportedImage(img.url))) continue; // elle değiştirilmiş
+
+    if (HIDE_AMATEUR_PHOTO.includes(row.slug)) {
+      images.forEach((img) => amateurUrls.add(img.url));
+      if (row.isActive) {
+        await db.update(products).set({ isActive: false }).where(eq(products.id, row.id));
+        maintenance++;
+      }
+      continue;
+    }
+
+    const wanted = images.find((img) => img.url.endsWith(`-${COVER_OVERRIDE[row.slug]}.webp`));
+    const cover = [...images].sort((a, b) => a.sortOrder - b.sortOrder)[0];
+    if (wanted && cover && wanted.id !== cover.id) {
+      amateurUrls.add(cover.url);
+      await db.update(productImages).set({ sortOrder: cover.sortOrder }).where(eq(productImages.id, wanted.id));
+      await db.update(productImages).set({ sortOrder: wanted.sortOrder }).where(eq(productImages.id, cover.id));
+      maintenance++;
+    } else if (cover && wanted?.id === cover.id) {
+      // zaten düzeltilmiş: eski kapak hâlâ bir kategoride görünüyor olabilir
+      images.filter((img) => img.id !== cover.id).forEach((img) => amateurUrls.add(img.url));
+    }
+  }
+  // Kategori kutusunda amatör fotoğraf varsa, kategoriye yeni bir fotoğraf seçilsin.
+  for (const c of categoryBySlug.values()) {
+    if (c.imageUrl && amateurUrls.has(c.imageUrl)) c.imageUrl = null;
+  }
+  for (const [categoryId, url] of categoryImage) {
+    if (amateurUrls.has(url)) categoryImage.delete(categoryId);
+  }
+  for (const urun of katalog) {
+    if (HIDE_AMATEUR_PHOTO.includes(urun.slug) || COVER_OVERRIDE[urun.slug]) continue;
+    for (const slug of [slugify(urun.alt), slugify(urun.ana)]) {
+      const c = categoryBySlug.get(slug);
+      if (c && !categoryImage.has(c.id) && urun.gorseller[0]) categoryImage.set(c.id, urun.gorseller[0]);
+    }
+  }
+
   /* ------------------------------------- kategori görselleri (yer tutucu) */
   let categoryImagesSet = 0;
   for (const c of categoryBySlug.values()) {
@@ -343,6 +407,7 @@ async function run() {
   console.log(`   kategori görseli   : ${categoryImagesSet} güncellendi`);
   console.log(`   demo ürün          : ${demoHidden} yayından kaldırıldı (silinmedi)`);
   console.log(`   boş kategori       : ${categoriesHidden} gizlendi`);
+  console.log(`   katalog bakımı     : ${maintenance} düzeltme`);
 }
 
 run()

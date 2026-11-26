@@ -105,13 +105,27 @@ export function isAllowedAdminIp(ip: string, raw: string | undefined): boolean {
   return rules.some((rule) => matches(rule, candidate));
 }
 
-/** İsteğin geldiği IP. Ters vekil arkasında ilk X-Forwarded-For değeridir. */
+/**
+ * İsteğin geldiği GERÇEK IP.
+ *
+ * X-Forwarded-For bir listedir: "istemcinin yazdığı, ..., vekilin eklediği".
+ * İstemci başlığı kendisi gönderip listenin BAŞINA istediği adresi
+ * yazabilir; bu yüzden ilk değer güvenilmez. Güvenilir olan, bizim önümüzdeki
+ * vekilin (Hostinger CDN) eklediği SON değerdir.
+ *
+ * `TRUSTED_PROXY_HOPS` önümüzde kaç vekil olduğunu söyler (varsayılan 1):
+ * sondan o kadar geriye gidilir. Değer listeden uzunsa ilk değer alınır.
+ *
+ * Doğrulama: `/api/ip` adresi hem bu sonucu hem de başlığın tamamını gösterir.
+ */
 export function clientIpFromHeaders(get: (name: string) => string | null): string {
-  const forwarded = get("x-forwarded-for") ?? "";
-  return (
-    forwarded.split(",")[0]?.trim() ||
-    get("cf-connecting-ip") ||
-    get("x-real-ip") ||
-    ""
-  );
+  const chain = (get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (chain.length) {
+    const hops = Math.max(1, Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "1", 10) || 1);
+    return chain[Math.max(0, chain.length - hops)];
+  }
+  return get("x-real-ip")?.trim() || get("cf-connecting-ip")?.trim() || "";
 }

@@ -2,9 +2,14 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { orders, type AddressSnapshot } from "@/db/schema";
+import {
+  categories,
+  productCategories,
+  productVariants,
+  type AddressSnapshot,
+} from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { getCartTotals } from "@/lib/cart";
 import {
@@ -15,6 +20,8 @@ import {
   reserveStockForOrder,
 } from "@/lib/orders";
 import { getPaymentProvider } from "@/lib/payment";
+import { getSettings } from "@/lib/settings";
+import { clientIpFromHeaders } from "@/lib/ip-allowlist";
 import { toProviderPrice } from "@/lib/money";
 import { sendAdminOrderNotice, sendOrderConfirmation } from "@/lib/mail";
 import { createId } from "@/lib/id";
@@ -85,11 +92,10 @@ function readAddress(formData: FormData, prefix: "ship" | "bill") {
   };
 }
 
+/** Ödeme sağlayıcısına (dolandırıcılık puanlaması için) giden gerçek istemci IP'si */
 async function clientIp(): Promise<string> {
   const store = await headers();
-  const forwarded = store.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return store.get("x-real-ip") ?? "127.0.0.1";
+  return clientIpFromHeaders((name) => store.get(name)) || "127.0.0.1";
 }
 
 /* ------------------------------ ANA AKIŞ -------------------------------- */
@@ -137,6 +143,17 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
     return { ok: false, error: "Ödeme yöntemi seç." };
   }
   const paymentMethod = method as "CREDIT_CARD" | "BANK_TRANSFER" | "CASH_ON_DELIVERY";
+
+  // Panelden kapatılan yöntem tarayıcıda gizlenir; ama form elle de
+  // gönderilebilir. Asıl karar burada verilir.
+  const settings = await getSettings();
+  const methodOpen =
+    paymentMethod === "CREDIT_CARD"
+      ? settings.payment_credit_card === "1"
+      : paymentMethod === "BANK_TRANSFER"
+        ? settings.payment_bank_transfer === "1" && Boolean(settings.bank_accounts.trim())
+        : settings.payment_cod === "1";
+  if (!methodOpen) return { ok: false, error: "Bu ödeme yöntemi şu an kullanılamıyor." };
 
   /* 4) Sepet kontrolü */
   const totals = await getCartTotals(base.data.couponCode ?? null);
@@ -236,10 +253,16 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
    * tutardır (kargo + taksit farkı dahil). basketItems toplamı price'a EŞİT olmalı.
    * Kargoyu ayrı bir sepet kalemi olarak eklersek ikisi de tutar.
    */
+  /*
+   * Kategori, sağlayıcıya GERÇEK ürün kategorisiyle bildirilir. Sanal POS
+   * sözleşmeleri ürün türünün doğru beyan edilmesini şart koşar; yanlış
+   * beyan hesabın kapatılmasına ve tahsilatların bloke edilmesine yol açar.
+   */
+  const categoryBySku = await rootCategoryNames(created.order.items.map((item) => item.sku));
   const basketItems = created.order.items.map((item, index) => ({
     id: `${created.order.orderNumber}-${index + 1}`,
     name: `${item.productName} (${item.variantInfo})`.slice(0, 100),
-    category1: "İç Giyim",
+    category1: (categoryBySku.get(item.sku) ?? "Cinsel Sağlık Ürünleri").slice(0, 100),
     itemType: "PHYSICAL" as const,
     price: toProviderPrice(item.lineTotal),
   }));
@@ -324,12 +347,18 @@ export async function submitCheckout(formData: FormData): Promise<CheckoutResult
   return { ok: true, kind: "3ds", html: result.htmlContent };
 }
 
-/** Havale bildirimi sonrası admin onayı bekleyen siparişin durumunu getirir. */
-export async function getOrderStatus(orderNumber: string) {
+
+/** Varyant SKU → ürünün ana kategori adı */
+async function rootCategoryNames(skus: string[]): Promise<Map<string, string>> {
+  if (!skus.length) return new Map();
   const rows = await db
-    .select({ status: orders.status, paymentStatus: orders.paymentStatus })
-    .from(orders)
-    .where(eq(orders.orderNumber, orderNumber))
-    .limit(1);
-  return rows[0] ?? null;
+    .select({ sku: productVariants.sku, name: categories.name })
+    .from(productVariants)
+    .innerJoin(productCategories, eq(productCategories.productId, productVariants.productId))
+    .innerJoin(
+      categories,
+      and(eq(categories.id, productCategories.categoryId), isNull(categories.parentId)),
+    )
+    .where(inArray(productVariants.sku, skus));
+  return new Map(rows.map((row) => [row.sku, row.name]));
 }

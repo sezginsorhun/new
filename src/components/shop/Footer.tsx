@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Lock, Mail, MapPin, Package, Phone, ShieldCheck } from "lucide-react";
 import { getSettings } from "@/lib/settings";
 import { parseLinkList } from "@/lib/default-settings";
 import { safeUrl } from "@/lib/security";
 import InstagramIcon from "./InstagramIcon";
 import ConsentResetLink from "./ConsentResetLink";
+import { isCardPaymentAvailable } from "@/lib/payment";
+import { companyLegalLine } from "@/lib/company";
 
 /**
  * ALT BİLGİ
@@ -27,8 +29,38 @@ export default async function Footer() {
     { url: settings.youtube_url, label: "YouTube" },
   ].filter((item) => safeUrl(item.url));
 
+  const cardPayments = settings.payment_credit_card === "1" && isCardPaymentAvailable();
+  const legalLine = settings.footer_note.trim() || companyLegalLine(settings);
+
+  /* Yalnızca GERÇEKTEN doğru olan güvenceler gösterilir. */
+  const assurances = [
+    { icon: Package, title: "Gizli paketleme", text: "İçeriği belli olmayan düz koli, isimsiz gönderici" },
+    { icon: ShieldCheck, title: "Orijinal ürün", text: "İthalatçı firmalardan faturalı temin edilir" },
+    cardPayments
+      ? { icon: Lock, title: "Güvenli ödeme", text: "Kart bilgileri 3D Secure ile, lisanslı ödeme kuruluşunda işlenir" }
+      : { icon: Lock, title: "Güvenli alışveriş", text: "SSL ile şifreli bağlantı, kart bilgisi saklanmaz" },
+    settings.contact_hours
+      ? { icon: Clock, title: "Müşteri hizmetleri", text: settings.contact_hours }
+      : null,
+  ].filter(Boolean) as { icon: typeof Package; title: string; text: string }[];
+
   return (
     <footer className="mt-auto border-t border-[color:var(--color-line)] bg-white">
+      {/* Güvence şeridi */}
+      <div className="border-b border-[color:var(--color-line)] bg-[color:var(--color-surface-2)]">
+        <ul className="container-page grid gap-5 py-7 sm:grid-cols-2 lg:grid-cols-4">
+          {assurances.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex items-start gap-3">
+              <Icon size={20} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
+              <div>
+                <p className="text-[13px] font-semibold">{title}</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-[color:var(--color-ink-soft)]">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         {/* Marka */}
         <div className="lg:col-span-2">
@@ -105,15 +137,28 @@ export default async function Footer() {
       {/* Telif */}
       <div className="border-t border-[color:var(--color-line)]">
         <div className="container-page flex flex-wrap items-center justify-between gap-3 py-5 text-[11.5px] text-[color:var(--color-muted)]">
-          <p>
-            © {new Date().getFullYear()} {settings.site_name}. {settings.footer_note}
-          </p>
+          <div className="space-y-1">
+            <p>© {new Date().getFullYear()} {settings.site_name}. Tüm hakları saklıdır.</p>
+            {legalLine && <p>{legalLine}</p>}
+            <p>Bu sitedeki ürünler yalnızca 18 yaşından büyükler içindir.</p>
+          </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <ConsentResetLink />
             <Link href="/sayfa/gizlilik-politikasi" className="link-underline">
               KVKK Aydınlatma Metni
             </Link>
-            <span className="font-medium">Güvenli ödeme · 3D Secure</span>
+            {cardPayments && (
+              <span className="flex items-center gap-1.5" aria-label="Kabul edilen kartlar">
+                {["VISA", "Mastercard", "TROY"].map((card) => (
+                  <span
+                    key={card}
+                    className="rounded-[3px] border border-[color:var(--color-line)] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[color:var(--color-ink-soft)]"
+                  >
+                    {card}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
         </div>
       </div>

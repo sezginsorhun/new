@@ -12,7 +12,7 @@
  * Bu yüzden siparişi conversationId üzerinden buluyoruz.
  */
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, payments } from "@/db/schema";
 import { getPaymentProvider } from "@/lib/payment";
@@ -62,6 +62,10 @@ export async function POST(request: Request) {
     return redirectPage("/odeme/sonuc?durum=hata&mesaj=Ge%C3%A7ersiz%20yan%C4%B1t");
   }
 
+  if (!conversationId || conversationId.length > 60) {
+    return redirectPage("/odeme/sonuc?durum=hata&mesaj=Ge%C3%A7ersiz%20yan%C4%B1t");
+  }
+
   // Ödeme kaydını ve siparişi bul
   const paymentRows = await db
     .select()
@@ -86,14 +90,37 @@ export async function POST(request: Request) {
 
   const provider = getPaymentProvider();
 
+  /*
+   * TEK SEFERLİK İŞLEME
+   * Bu adres herkese açık. Aynı geri dönüş tekrar gönderilirse (tarayıcı
+   * yenilemesi, bankanın ikinci denemesi ya da kötü niyetli tekrar) ödeme
+   * kaydı zaten sonuçlanmıştır; yeniden işlenmez, mevcut sonuç gösterilir.
+   */
+  if (paymentRecord.status !== "PENDING") {
+    const paid = paymentRecord.status === "SUCCESS";
+    return redirectPage(
+      paid
+        ? `/odeme/sonuc?durum=basarili&siparis=${order.orderNumber}`
+        : `/odeme/sonuc?durum=basarisiz&siparis=${order.orderNumber}&mesaj=${encodeURIComponent("Bu ödeme daha önce sonuçlandı.")}`,
+    );
+  }
+
+  /** Ödeme kaydını yalnızca hâlâ bekliyorsa başarısız yapar. */
+  const failPayment = (fields: {
+    errorCode?: string | null;
+    errorMessage: string;
+    rawResponse?: object | null;
+  }) =>
+    db
+      .update(payments)
+      .set({ status: "FAILED", ...fields })
+      .where(and(eq(payments.id, paymentRecord.id), eq(payments.status, "PENDING")));
+
   /* --- 1. adım: 3D doğrulama sonucu --- */
   if (status !== "success" || mdStatus !== "1") {
     const reason =
       provider.verificationMessages[mdStatus] ?? "3D Secure doğrulaması tamamlanamadı.";
-    await db
-      .update(payments)
-      .set({ status: "FAILED", errorCode: mdStatus, errorMessage: reason })
-      .where(eq(payments.id, paymentRecord.id));
+    await failPayment({ errorCode: mdStatus.slice(0, 40), errorMessage: reason });
     await markOrderFailed(order.id, reason);
     return redirectPage(
       `/odeme/sonuc?durum=basarisiz&siparis=${order.orderNumber}&mesaj=${encodeURIComponent(reason)}`,
@@ -104,18 +131,47 @@ export async function POST(request: Request) {
   const result = await provider.complete3DSecure(conversationId, paymentId, conversationData);
 
   if (!result.ok) {
-    await db
-      .update(payments)
-      .set({
-        status: "FAILED",
-        errorCode: result.errorCode ?? null,
-        errorMessage: result.error,
-        rawResponse: (result.raw ?? null) as object | null,
-      })
-      .where(eq(payments.id, paymentRecord.id));
+    await failPayment({
+      errorCode: result.errorCode ?? null,
+      errorMessage: result.error,
+      rawResponse: (result.raw ?? null) as object | null,
+    });
     await markOrderFailed(order.id, result.error);
     return redirectPage(
       `/odeme/sonuc?durum=basarisiz&siparis=${order.orderNumber}&mesaj=${encodeURIComponent(result.error)}`,
+    );
+  }
+
+  /*
+   * --- 2b. adım: tahsil edilen ödeme GERÇEKTEN bu siparişe mi ait? ---
+   *
+   * Geri dönüşteki paymentId tarayıcıdan gelir. Kontrol olmasa biri ucuz
+   * bir siparişin başarılı ödeme kimliğini, pahalı bir siparişin
+   * conversationId'siyle birlikte gönderip pahalı siparişi "ödendi"
+   * yaptırabilirdi. Bu yüzden sağlayıcının yanıtındaki tutar ve kimlikler
+   * veritabanındaki kayıtla karşılaştırılır; uymazsa ödeme iptal edilir.
+   */
+  const paidKurus = Math.round(Number.parseFloat(result.paidPrice) * 100);
+  const mismatch =
+    !Number.isFinite(paidKurus) ||
+    paidKurus + 1 < paymentRecord.amount || // 1 kuruşluk yuvarlama payı
+    (result.conversationId !== undefined && result.conversationId !== conversationId) ||
+    (result.basketId !== undefined && result.basketId !== order.orderNumber);
+
+  if (mismatch) {
+    const reason = "Ödeme tutarı veya işlem bilgisi siparişle eşleşmedi.";
+    console.error("[odeme] eşleşmeyen geri dönüş", {
+      order: order.orderNumber,
+      expected: paymentRecord.amount,
+      paid: paidKurus,
+      returnedConversation: result.conversationId,
+      returnedBasket: result.basketId,
+    });
+    await provider.cancel(result.paymentId, conversationId).catch(() => null);
+    await failPayment({ errorCode: "MISMATCH", errorMessage: reason, rawResponse: result.raw as object });
+    await markOrderFailed(order.id, reason);
+    return redirectPage(
+      `/odeme/sonuc?durum=basarisiz&siparis=${order.orderNumber}&mesaj=${encodeURIComponent(reason)}`,
     );
   }
 
@@ -134,7 +190,7 @@ export async function POST(request: Request) {
       binNumber: result.binNumber ?? null,
       rawResponse: result.raw as object,
     })
-    .where(eq(payments.id, paymentRecord.id));
+    .where(and(eq(payments.id, paymentRecord.id), eq(payments.status, "PENDING")));
 
   try {
     await markOrderPaid(order.id);

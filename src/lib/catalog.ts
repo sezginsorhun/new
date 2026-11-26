@@ -3,6 +3,7 @@
  * Vitrin sayfalarının ihtiyaç duyduğu tüm okuma işlemleri burada.
  */
 
+import { refreshBanner } from "@/lib/legacy-copy";
 import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
@@ -530,7 +531,11 @@ const readBanners = unstable_cache(
 );
 
 /** Carousel slaytları — panelden değişince etiket geçersiz kılınır. */
-export const getBanners = cache((position = "home_hero") => readBanners(position));
+export const getBanners = cache(async (position = "home_hero") => {
+  // Demo görselli slaytlar gizlenir, demo metinleri güncellenir (bkz. legacy-copy.ts).
+  const rows = await readBanners(position);
+  return rows.map(refreshBanner).filter((row): row is NonNullable<typeof row> => row !== null);
+});
 
 /** En çok satanlar */
 export async function getBestsellerProducts(limit = 8) {

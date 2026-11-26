@@ -1,24 +1,19 @@
 /**
  * İSTEK BİLGİSİ — IP ve tarayıcı bilgisi
  *
- * Ters vekil (Vercel, Nginx, Cloudflare) arkasında gerçek IP, X-Forwarded-For
- * başlığının İLK değeridir. Bu başlık istemci tarafından taklit edilebilir;
- * bu yüzden sadece hız sınırı ve kayıt amacıyla kullanılır, yetkilendirmede asla.
+ * IP, ip-allowlist.ts içindeki clientIpFromHeaders ile okunur: X-Forwarded-For
+ * listesinin istemcinin taklit edebileceği BAŞI değil, vekilin eklediği SONU.
  */
 
 import "server-only";
 import { headers } from "next/headers";
+import { clientIpFromHeaders } from "@/lib/ip-allowlist";
 
 export type RequestInfo = { ip: string; userAgent: string };
 
 export async function getRequestInfo(): Promise<RequestInfo> {
   const h = await headers();
-  const forwarded = h.get("x-forwarded-for") ?? "";
-  const ip =
-    forwarded.split(",")[0]?.trim() ||
-    h.get("x-real-ip") ||
-    h.get("cf-connecting-ip") ||
-    "0.0.0.0";
+  const ip = clientIpFromHeaders((name) => h.get(name)) || "0.0.0.0";
   const userAgent = (h.get("user-agent") ?? "").slice(0, 400);
   return { ip: ip.slice(0, 60), userAgent };
 }

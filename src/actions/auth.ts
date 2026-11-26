@@ -37,7 +37,9 @@ import { getRequestInfo, describeDevice } from "@/lib/request-info";
 import { logAudit } from "@/lib/audit";
 import { safeRedirectPath, assertSameOrigin } from "@/lib/security";
 import { getOrCreateCart } from "@/lib/cart";
-import { sendNewLoginNotice } from "@/lib/mail";
+import { sendNewLoginNotice, sendPasswordReset } from "@/lib/mail";
+import { createResetToken, readResetToken, resetTokenMatches } from "@/lib/password-reset";
+import { checkGenericLimit } from "@/lib/rate-limit";
 
 export type AuthState = { ok: boolean; message: string; needsTwoFactor?: boolean } | null;
 
@@ -426,4 +428,94 @@ export async function changePasswordAction(
   });
 
   return { ok: true, message: "Şifren güncellendi. Diğer cihazlardaki oturumlar kapatıldı." };
+}
+
+/* =========================== ŞİFREMİ UNUTTUM ============================= */
+
+const RESET_SENT =
+  "Bu e-posta adresiyle kayıtlı bir hesap varsa, şifre sıfırlama bağlantısını gönderdik. Gelen kutunu (ve gereksiz klasörünü) kontrol et.";
+
+export async function requestPasswordResetAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  await assertSameOrigin();
+  const parsed = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(255)
+    .email("Geçerli bir e-posta gir.")
+    .safeParse(formData.get("email"));
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+
+  const { ip } = await getRequestInfo();
+  const limit = await checkGenericLimit("reset", ip);
+  if (!limit.allowed) return { ok: false, message: limit.message ?? "Çok fazla istek." };
+
+  const [user] = await db.select().from(users).where(eq(users.email, parsed.data)).limit(1);
+
+  // Hesap olsun olmasın aynı yanıt: e-postanın kayıtlı olup olmadığı
+  // bu formdan öğrenilemesin.
+  if (user && user.isActive) {
+    const token = await createResetToken(user);
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    await sendPasswordReset({
+      to: user.email,
+      name: user.firstName,
+      url: `${siteUrl}/sifre-sifirla?t=${encodeURIComponent(token)}`,
+    });
+    await logAudit({
+      action: "auth.password_reset_requested",
+      userId: user.id,
+      actorEmail: user.email,
+      summary: "Şifre sıfırlama bağlantısı gönderildi",
+    });
+  }
+  return { ok: true, message: RESET_SENT };
+}
+
+export async function resetPasswordAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  await assertSameOrigin();
+  const token = String(formData.get("token") ?? "");
+  const next = String(formData.get("newPassword") ?? "");
+  const repeat = String(formData.get("repeatPassword") ?? "");
+
+  const { ip } = await getRequestInfo();
+  const limit = await checkGenericLimit("reset-confirm", ip);
+  if (!limit.allowed) return { ok: false, message: limit.message ?? "Çok fazla istek." };
+
+  const claim = await readResetToken(token);
+  const invalid = {
+    ok: false,
+    message: "Bağlantının süresi dolmuş ya da daha önce kullanılmış. Yeni bir bağlantı iste.",
+  };
+  if (!claim) return invalid;
+
+  const [user] = await db.select().from(users).where(eq(users.id, claim.userId)).limit(1);
+  if (!user || !user.isActive || !resetTokenMatches(claim.fp, user.passwordHash)) return invalid;
+
+  if (next !== repeat) return { ok: false, message: "Şifreler eşleşmiyor." };
+  const weak = passwordProblem(next, user.email);
+  if (weak) return { ok: false, message: weak };
+
+  await db
+    .update(users)
+    .set({ passwordHash: await hashPassword(next), updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  // Yeni şifre: tüm cihazlardaki oturumlar ve hesap kilidi sıfırlanır.
+  await revokeAllSessions(user.id);
+  await registerSuccess(user.id, ip);
+  await logAudit({
+    action: "auth.password_changed",
+    userId: user.id,
+    actorEmail: user.email,
+    summary: "Şifre, e-posta bağlantısıyla sıfırlandı",
+  });
+
+  return { ok: true, message: "Şifren güncellendi. Yeni şifrenle giriş yapabilirsin." };
 }

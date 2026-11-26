@@ -7,7 +7,8 @@ import { db } from "@/db";
 import { favorites } from "@/db/schema";
 import { getProductBySlug, getRelatedProducts, incrementProductView } from "@/lib/catalog";
 import { getSession } from "@/lib/auth";
-import { getNumericSetting } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
+import { whatsappNumber } from "@/lib/whatsapp";
 import { formatDate } from "@/lib/utils";
 import ProductBuyBox from "@/components/shop/ProductBuyBox";
 import ProductCard from "@/components/shop/ProductCard";
@@ -34,11 +35,13 @@ export default async function ProductPage(props: PageProps<"/urun/[slug]">) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [session, related, freeShippingThreshold] = await Promise.all([
+  const [session, related, settings] = await Promise.all([
     getSession(),
     getRelatedProducts(product.id, 4),
-    getNumericSetting("free_shipping_threshold"),
+    getSettings(),
   ]);
+  const freeShippingThreshold = Number(settings.free_shipping_threshold) || 0;
+  const waNumber = whatsappNumber(settings.whatsapp_number);
 
   let isFavorite = false;
   if (session) {
@@ -85,7 +88,8 @@ export default async function ProductPage(props: PageProps<"/urun/[slug]">) {
     <div className="container-page py-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // "<" kaçışlanır: açıklamada "</script>" geçse etiketi kapatıp kod çalıştıramaz.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       {/* Kırılım yolu */}
@@ -136,6 +140,16 @@ export default async function ProductPage(props: PageProps<"/urun/[slug]">) {
         variants={product.variants}
         isFavorite={isFavorite}
         freeShippingThreshold={freeShippingThreshold}
+        whatsapp={
+          waNumber
+            ? {
+                number: waNumber,
+                message: settings.whatsapp_message,
+                sku: product.sku,
+                url: `${(process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "")}/urun/${product.slug}`,
+              }
+            : null
+        }
       />
 
       <ProductTabs

@@ -13,7 +13,7 @@ import {
   reviews,
   users,
 } from "@/db/schema";
-import { requireAdmin, requirePermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin } from "@/lib/security";
 import { setSettings } from "@/lib/settings";
@@ -50,7 +50,7 @@ export async function saveCategoryAction(
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("categories.manage");
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -105,7 +105,7 @@ export async function saveCategoryAction(
 
 export async function deleteCategoryAction(id: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("categories.manage");
   await db.delete(categories).where(eq(categories.id, id));
   await logAudit({ action: "category.delete", userId: admin.id, actorEmail: admin.email,
     entity: "category", entityId: id });
@@ -134,7 +134,7 @@ export async function saveCouponAction(
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("coupons.manage");
 
   const parsed = couponSchema.safeParse({
     code: formData.get("code"),
@@ -195,7 +195,7 @@ export async function saveCouponAction(
 
 export async function deleteCouponAction(id: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("coupons.manage");
   await db.delete(coupons).where(eq(coupons.id, id));
   await logAudit({ action: "coupon.delete", userId: admin.id, actorEmail: admin.email,
     entity: "coupon", entityId: id });
@@ -210,7 +210,7 @@ export async function savePageAction(
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
 
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -248,7 +248,7 @@ export async function savePageAction(
 
 export async function deletePageAction(id: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/admin/sayfalar");
   return { ok: true };
@@ -258,7 +258,7 @@ export async function deletePageAction(id: string) {
 
 export async function approveReviewAction(id: string, approved: boolean) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("reviews.moderate");
   await db.update(reviews).set({ isApproved: approved }).where(eq(reviews.id, id));
   await logAudit({ action: "review.moderate", userId: admin.id, actorEmail: admin.email,
     entity: "review", entityId: id, summary: approved ? "Yorum onaylandı" : "Yorum onayı kaldırıldı" });
@@ -268,7 +268,7 @@ export async function approveReviewAction(id: string, approved: boolean) {
 
 export async function deleteReviewAction(id: string) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("reviews.moderate");
   await db.delete(reviews).where(eq(reviews.id, id));
   revalidatePath("/admin/yorumlar");
   return { ok: true };
@@ -278,7 +278,7 @@ export async function deleteReviewAction(id: string) {
 
 export async function markMessageReadAction(id: number, isRead: boolean) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("messages.manage");
   await db.update(contactMessages).set({ isRead }).where(eq(contactMessages.id, id));
   revalidatePath("/admin/mesajlar");
   return { ok: true };
@@ -286,7 +286,7 @@ export async function markMessageReadAction(id: number, isRead: boolean) {
 
 export async function deleteMessageAction(id: number) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("messages.manage");
   await db.delete(contactMessages).where(eq(contactMessages.id, id));
   revalidatePath("/admin/mesajlar");
   return { ok: true };
@@ -296,7 +296,7 @@ export async function deleteMessageAction(id: number) {
 
 export async function toggleCustomerActiveAction(id: string, isActive: boolean) {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("customers.manage");
   await db.update(users).set({ isActive }).where(eq(users.id, id));
   await logAudit({ action: "customer.update", userId: admin.id, actorEmail: admin.email,
     entity: "user", entityId: id, summary: isActive ? "Hesap açıldı" : "Hesap kapatıldı" });
@@ -308,18 +308,39 @@ export async function toggleCustomerActiveAction(id: string, isActive: boolean) 
 
 const MONEY_KEYS = ["shipping_fee", "free_shipping_threshold", "cod_fee"];
 
+/*
+ * Bu formun yazabileceği anahtarlar. Tema, SEO, menü ve serbest CSS kendi
+ * yetkileriyle korunan ayrı formlardan yönetilir; bu eylem onlara yazamaz.
+ * Listede olmayan anahtar sessizce atlanır — formData'ya elle eklenmiş
+ * rastgele bir alan veritabanına yazılmaz.
+ */
+const GENERAL_SETTING_KEYS = new Set(
+  Object.keys(DEFAULT_SETTINGS).filter(
+    (key) =>
+      !key.startsWith("theme_") &&
+      !key.startsWith("seo_") &&
+      key !== "custom_css" &&
+      key !== "menu_overrides",
+  ),
+);
+const MAX_SETTING_LENGTH = 4000;
+
 export async function saveSettingsAction(
   _prev: ContentState,
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("settings.manage");
 
   const entries: Record<string, string> = {};
 
   for (const [key, raw] of formData.entries()) {
     if (typeof raw !== "string") continue;
     if (key.startsWith("$")) continue; // Next.js dahili alanları
+    if (!GENERAL_SETTING_KEYS.has(key)) continue;
+    if (raw.length > MAX_SETTING_LENGTH) {
+      return { ok: false, message: "Bir alan çok uzun (en fazla 4000 karakter)." };
+    }
 
     if (MONEY_KEYS.includes(key)) {
       entries[key] = String(parsePrice(raw));

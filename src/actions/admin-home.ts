@@ -13,7 +13,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { createId } from "@/lib/id";
 import { banners, homeSections, mediaAssets } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { assertSameOrigin, safeUrl } from "@/lib/security";
 import type { SectionConfig, SectionType } from "@/lib/home";
@@ -39,7 +39,7 @@ const SECTION_TYPES = [
 
 export async function addSectionAction(type: string): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
 
   if (!SECTION_TYPES.includes(type as (typeof SECTION_TYPES)[number])) {
     return { ok: false, message: "Geçersiz bölüm tipi." };
@@ -87,7 +87,7 @@ export async function addSectionAction(type: string): Promise<ContentState> {
 
 export async function deleteSectionAction(id: string): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   await db.delete(homeSections).where(eq(homeSections.id, id));
   await logAudit({
     action: "section.update",
@@ -103,7 +103,7 @@ export async function deleteSectionAction(id: string): Promise<ContentState> {
 
 export async function toggleSectionAction(id: string, isActive: boolean): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   await db
     .update(homeSections)
     .set({ isActive, updatedAt: new Date() })
@@ -123,7 +123,7 @@ export async function toggleSectionAction(id: string, isActive: boolean): Promis
 /** Bölümü bir sıra yukarı/aşağı taşır. */
 export async function moveSectionAction(id: string, direction: "up" | "down"): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
 
   const rows = await db.select().from(homeSections).orderBy(asc(homeSections.sortOrder));
   const index = rows.findIndex((row) => row.id === id);
@@ -162,7 +162,7 @@ export async function saveSectionAction(
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
 
   const id = String(formData.get("id") ?? "");
   if (!id) return { ok: false, message: "Bölüm bulunamadı." };
@@ -304,7 +304,7 @@ export async function saveSlideAction(
   formData: FormData,
 ): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
 
   const parsed = slideSchema.safeParse({
     imageUrl: formData.get("imageUrl") ?? "",
@@ -376,7 +376,7 @@ export async function saveSlideAction(
 
 export async function deleteSlideAction(id: string): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   await db.delete(banners).where(eq(banners.id, id));
   await logAudit({
     action: "banner.delete",
@@ -391,7 +391,7 @@ export async function deleteSlideAction(id: string): Promise<ContentState> {
 
 export async function toggleSlideAction(id: string, isActive: boolean): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   await db.update(banners).set({ isActive, updatedAt: new Date() }).where(eq(banners.id, id));
   await logAudit({
     action: "banner.update",
@@ -407,7 +407,7 @@ export async function toggleSlideAction(id: string, isActive: boolean): Promise<
 
 export async function moveSlideAction(id: string, direction: "up" | "down"): Promise<ContentState> {
   await assertSameOrigin();
-  await requireAdmin();
+  await requirePermission("content.manage");
 
   const [current] = await db.select().from(banners).where(eq(banners.id, id)).limit(1);
   if (!current) return { ok: false, message: "Slayt bulunamadı." };
@@ -437,7 +437,7 @@ export async function moveSlideAction(id: string, direction: "up" | "down"): Pro
 
 export async function deleteMediaAction(id: string): Promise<ContentState> {
   await assertSameOrigin();
-  const admin = await requireAdmin();
+  const admin = await requirePermission("content.manage");
   const [asset] = await db
     .select({ fileName: mediaAssets.fileName, storage: mediaAssets.storage })
     .from(mediaAssets)
@@ -463,7 +463,7 @@ export async function deleteMediaAction(id: string): Promise<ContentState> {
 
 export async function updateMediaAltAction(id: string, alt: string): Promise<ContentState> {
   await assertSameOrigin();
-  await requireAdmin();
+  await requirePermission("content.manage");
   await db
     .update(mediaAssets)
     .set({ alt: alt.slice(0, 250) || null })

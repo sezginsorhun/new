@@ -2,6 +2,7 @@ import { adminUrl } from "@/lib/admin-path";
 import { canEnterPanel } from "@/lib/permissions";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { safeRedirectPath } from "@/lib/security";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import LoginForm from "@/components/shop/LoginForm";
@@ -16,7 +17,8 @@ export default async function LoginPage(props: PageProps<"/giris">) {
   const query = await props.searchParams;
   const next = typeof query.next === "string" ? query.next : "";
 
-  if (session) redirect(next || (canEnterPanel(session.role) ? adminUrl() : "/hesabim"));
+  // `next` dışarıdan gelir: yalnızca site içi yollara yönlendirilir (açık yönlendirme koruması).
+  if (session) redirect(safeRedirectPath(next, canEnterPanel(session.role) ? adminUrl() : "/hesabim"));
 
   return (
     <div className="container-page py-16">

@@ -98,6 +98,9 @@ export type Complete3DSecureResult =
       /** Kısmi iade için işlem kimliği (sağlayıcı veriyorsa) */
       transactionId?: string;
       paidPrice: string;
+      /** Sağlayıcının yanıtta geri verdiği işlem/sepet kimlikleri (doğrulama için) */
+      conversationId?: string;
+      basketId?: string;
       installment: number;
       cardFamily?: string;
       cardAssociation?: string;

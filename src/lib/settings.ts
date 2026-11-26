@@ -11,6 +11,7 @@ import { settings } from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { DEFAULT_SETTINGS, type SettingKey } from "@/lib/default-settings";
 import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache-tags";
+import { normalizeSettings } from "@/lib/settings-normalize";
 
 export { DEFAULT_SETTINGS };
 export type { SettingKey };
@@ -28,7 +29,9 @@ const readSettings = unstable_cache(
     const rows = await db.select().from(settings);
     const map: Record<string, string> = { ...DEFAULT_SETTINGS };
     for (const row of rows) map[row.key] = row.value;
-    return map;
+    // Eski kurulumdan kalan örnek değerler (sahte telefon, IBAN, MERSIS…)
+    // sitede görünmesin. bkz. settings-normalize.ts
+    return normalizeSettings(map);
   },
   ["ayarlar"],
   { revalidate: CACHE_TTL, tags: [CACHE_TAGS.settings] },

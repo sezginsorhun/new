@@ -1,5 +1,6 @@
 import { adminUrl } from "@/lib/admin-path";
 import Link from "next/link";
+import bcrypt from "bcryptjs";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   AlertTriangle,
@@ -37,6 +38,11 @@ export default async function AdminDashboard() {
   const seesStock = can(viewer.role, "stock.manage");
   const seesReviews = can(viewer.role, "reviews.moderate");
   const seesMessages = can(viewer.role, "messages.manage");
+
+  // Kurulumdaki örnek şifre hâlâ geçerliyse (README'de herkese açık yazıyor)
+  const usesDefaultPassword = viewer.passwordHash
+    ? await bcrypt.compare("Admin123!", viewer.passwordHash)
+    : false;
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -176,6 +182,18 @@ export default async function AdminDashboard() {
   return (
     <div>
       <h1 className="mb-6 text-[26px]">Panel</h1>
+
+      {usesDefaultPassword && (
+        <div role="alert" className="mb-6 rounded-md border border-red-300 bg-red-50 p-4 text-[13.5px] text-red-900">
+          <strong>Güvenlik uyarısı:</strong> Bu hesap hâlâ kurulumdaki örnek şifreyi
+          (<code>Admin123!</code>) kullanıyor. Bu şifre kurulum belgelerinde herkese açık
+          yazılıdır.{" "}
+          <Link href={adminUrl("hesabim")} className="font-semibold underline">
+            Şifreni şimdi değiştir
+          </Link>
+          .
+        </div>
+      )}
 
       {/* Bildirimler */}
       {((seesReviews && (pendingReviews[0]?.count ?? 0) > 0) ||

@@ -240,7 +240,7 @@ export default function ProductTabs({
               altları iade alınamaz.
             </p>
             <Link
-              href="/sayfa/iade-ve-degisim"
+              href="/sayfa/iade-degisim"
               className="inline-block text-[13px] text-[color:var(--color-brand)] underline"
             >
               Tüm iade koşullarını oku

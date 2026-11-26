@@ -31,37 +31,58 @@ export const DEFAULT_SETTINGS = {
   free_shipping_threshold: "75000",
   cod_fee: "1500",
 
-  /* --- İletişim --- */
-  contact_phone: "0850 000 00 00",
-  contact_email: "info@alenora.com",
-  contact_address: "Merkez Mah. Örnek Cad. No:1, Şişli / İstanbul",
-  instagram_url: "https://instagram.com/",
+  /* --- İletişim ---
+   * Boş bırakılan alan sitede HİÇ gösterilmez. Uydurma bir telefon ya da
+   * adres göstermek, boş bırakmaktan çok daha fazla güven kaybettirir. */
+  contact_phone: "",
+  contact_email: "",
+  contact_address: "",
+  /** Çalışma saatleri — iletişim sayfasında ve WhatsApp kutusunda görünür */
+  contact_hours: "Hafta içi 09:00 – 18:00",
+  instagram_url: "",
   facebook_url: "",
   tiktok_url: "",
   youtube_url: "",
   whatsapp_number: "",
+  /** WhatsApp sipariş mesajının başı; ürün adı, kodu ve bağlantısı sonuna eklenir */
+  whatsapp_message: "Merhaba, bu ürünü sipariş etmek istiyorum:",
+
+  /* --- Satıcı (şirket) bilgileri ---
+   * Mesafeli satış sözleşmesi, iade koşulları ve footer'daki yasal satır
+   * bu alanlardan OTOMATİK doldurulur (6563 sayılı Kanun ve Ticari
+   * Reklam ve Haksız Ticari Uygulamalar Yönetmeliği satıcı bilgilerini
+   * zorunlu tutar; sanal POS başvurusunda da ilk bakılan yer burasıdır).
+   * Boş alanlar sitede hiç yazılmaz. */
+  company_title: "",
+  company_tax_office: "",
+  company_tax_number: "",
+  /** Yalnızca şirketler (Ltd./A.Ş.) için. Şahıs işletmesinde boş bırak. */
+  company_mersis: "",
+  company_kep: "",
+  /** ETBİS kayıt numarası/doğrulama. Doluysa footer'da "ETBİS'e kayıtlıdır" yazar. */
+  company_etbis: "",
 
   /* --- Alt bilgi (footer) --- */
   footer_about:
-    "Nefes alan sertifikalı kumaşlar, iz bırakmayan dikişler ve her bedene yakışan kalıplar.",
+    "Cinsel sağlık ve yetişkin ürünlerinde orijinal, faturalı ürün. Tüm siparişler içeriği belli olmayan düz kolide, isimsiz gönderilir.",
   footer_col1_title: "Alışveriş",
   footer_col1_links:
-    "Kadın|/kategori/kadin\nErkek|/kategori/erkek\nYeni gelenler|/kategori/kadin\nİndirimdekiler|/indirimli",
+    "Kadın oyuncakları|/kategori/kadin-oyuncaklari\nErkek oyuncakları|/kategori/erkek-oyuncaklari\nCinsel sağlık|/kategori/cinsel-saglik\nİndirimdekiler|/indirimli",
   footer_col2_title: "Yardım",
   footer_col2_links:
-    "Sipariş takibi|/hesabim/siparisler\nKargo ve teslimat|/sayfa/kargo-teslimat\nİade ve değişim|/sayfa/iade-degisim\nBeden rehberi|/sayfa/beden-rehberi",
+    "Sipariş takibi|/hesabim/siparisler\nKargo ve teslimat|/sayfa/kargo-teslimat\nİade ve değişim|/sayfa/iade-degisim\nSık sorulan sorular|/sayfa/sss",
   footer_col3_title: "Kurumsal",
   footer_col3_links:
-    "Hakkımızda|/sayfa/hakkimizda\nİletişim|/iletisim\nGizlilik politikası|/sayfa/gizlilik\nMesafeli satış sözleşmesi|/sayfa/mesafeli-satis",
-  footer_note:
-    "Alenora Tekstil Ltd. Şti. · Mersis No: 0000000000000 · ETBİS kayıtlıdır.",
+    "Hakkımızda|/sayfa/hakkimizda\nİletişim|/iletisim\nKVKK aydınlatma metni|/sayfa/gizlilik-politikasi\nMesafeli satış sözleşmesi|/sayfa/mesafeli-satis\nÖn bilgilendirme formu|/sayfa/on-bilgilendirme",
+  /** Boşsa footer'daki yasal satır şirket bilgilerinden otomatik kurulur. */
+  footer_note: "",
 
   /* --- Ödeme yöntemleri (1 açık / 0 kapalı) --- */
   payment_credit_card: "1",
   payment_bank_transfer: "1",
   payment_cod: "1",
-  bank_accounts:
-    "Ziraat Bankası — TR00 0000 0000 0000 0000 0000 00 — Alenora Tekstil Ltd. Şti.",
+  /** Her satıra bir hesap: "Banka — IBAN — Hesap sahibi". Boşsa havale seçeneği gizlenir. */
+  bank_accounts: "",
 
   /* --- Taksit --- */
   max_installment: "9",
@@ -91,12 +112,12 @@ export const DEFAULT_SETTINGS = {
    */
   seo_title_template: "%s | Alenora",
   /** Ana sayfanın başlığı — şablona GİRMEZ, olduğu gibi kullanılır. */
-  seo_home_title: "Alenora — Yetişkin Ürünleri ve İç Giyim",
+  seo_home_title: "Alenora — Cinsel Sağlık ve Yetişkin Ürünleri",
   seo_home_description:
-    "Cinsel sağlık ürünleri, çift ürünleri ve iç giyim. Gizli ve isimsiz paketle gönderim, 750 TL üzeri ücretsiz kargo.",
+    "Orijinal cinsel sağlık ve yetişkin ürünleri. İçeriği belli olmayan düz kolide gizli gönderim, 750 TL üzeri ücretsiz kargo.",
   /** Kendi açıklaması olmayan sayfalarda kullanılır. */
   seo_default_description:
-    "Alenora — yetişkin ürünleri ve iç giyim. Gizli paketle hızlı gönderim.",
+    "Alenora — orijinal cinsel sağlık ve yetişkin ürünleri. Gizli paketle hızlı gönderim.",
   /** Sosyal medyada paylaşılınca görünen görsel (1200x630 önerilir) */
   seo_og_image: "",
   /** "1" ise arama motorları siteyi dizine ekler. Kapatmak siteyi Google'dan düşürür. */
