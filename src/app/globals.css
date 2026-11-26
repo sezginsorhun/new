@@ -17,7 +17,7 @@
   /* --- Zemin ve yüzeyler --- */
   --color-cream: #ffffff;      /* sayfa zemini (eski isim korundu) */
   --color-surface: #ffffff;    /* kart zemini */
-  --color-surface-2: #f6f4f3;  /* vurgulu bölüm zemini */
+  --color-surface-2: #f7f5fa;  /* vurgulu bölüm zemini */
   --color-surface-3: #efebe8;  /* görsel yer tutucu */
 
   /* --- Yazı --- */
@@ -26,16 +26,17 @@
   --color-muted: #8b8380;      /* soluk yazı */
 
   /* --- Çizgiler --- */
-  --color-line: #e7e3e0;
-  --color-line-strong: #d4ceca;
+  --color-line: #e8e4ee;
+  --color-line-strong: #d3cddd;
 
   /* --- Vurgu --- */
-  --color-brand: #c62a4e;
-  --color-brand-dark: #a41f3e;
-  --color-brand-soft: #fdeef1;
+  --color-brand: #4b2a7b;
+  --color-brand-dark: #391f5f;
+  --color-brand-soft: #f3eefa;
 
   /* --- Durum --- */
-  --color-sale: #c62a4e;
+  --color-sale: #d6266e;      /* indirimli fiyat ve rozet */
+  --color-sale-soft: #fde8f0;
   --color-success: #16794b;
   --color-ok: #16794b;
   --color-warn: #9a6a1c;
@@ -50,7 +51,7 @@
     "Helvetica Neue", Arial, sans-serif;
 
   /* --- Yuvarlatma --- */
-  --radius-card: 2px;
+  --radius-card: 8px;
 }
 
 /* --------------------------------------------------------------------------
@@ -133,11 +134,11 @@
   }
 
   .btn-primary {
-    background-color: var(--color-ink);
+    background-color: var(--color-brand);
     color: #fff;
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: #000;
+    background-color: var(--color-brand-dark);
   }
 
   .btn-brand {
@@ -217,7 +218,7 @@
     @apply inline-flex items-center px-2 py-1 text-[10px] font-bold
            uppercase tracking-[0.1em];
   }
-  .badge-sale   { background: var(--color-brand); color: #fff; }
+  .badge-sale   { background: var(--color-sale); color: #fff; }
   .badge-new    { background: var(--color-ink); color: #fff; }
   .badge-soft   { background: var(--color-surface-2); color: var(--color-ink); }
   .badge-ok     { background: #e8f3ed; color: var(--color-ok); }
@@ -248,7 +249,7 @@
     display: none;
   }
   .rail > * {
-    @apply w-[62%] shrink-0 snap-start sm:w-[42%] md:w-[31%] lg:w-[23.5%];
+    @apply w-[46%] shrink-0 snap-start sm:w-[31%] md:w-[31%] lg:w-[calc(25%-9px)];
   }
 
   /* --- Tablo (yönetim) --- */

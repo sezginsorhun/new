@@ -18,6 +18,7 @@ import {
   products,
   reviews,
   banners,
+  brands,
 } from "@/db/schema";
 
 /* -------------------------------- TİPLER -------------------------------- */
@@ -34,6 +35,8 @@ export type ProductCardData = {
   inStock: boolean;
   rating: number | null;
   reviewCount: number;
+  /** Tek seçenekli ürünlerde kartta doğrudan "Sepete Ekle" için */
+  quickAddVariantId: string | null;
 };
 
 export type CategoryNode = {
@@ -124,6 +127,7 @@ async function decorateProducts(
       .orderBy(asc(productImages.sortOrder)),
     db
       .select({
+        id: productVariants.id,
         productId: productVariants.productId,
         colorName: productVariants.colorName,
         colorHex: productVariants.colorHex,
@@ -151,8 +155,8 @@ async function decorateProducts(
 
     const colorMap = new Map<string, string>();
     let inStock = false;
-    for (const v of variantRows) {
-      if (v.productId !== row.id) continue;
+    const own = variantRows.filter((v) => v.productId === row.id);
+    for (const v of own) {
       if (!colorMap.has(v.colorName)) colorMap.set(v.colorName, v.colorHex);
       if (v.stock > 0) inStock = true;
     }
@@ -166,6 +170,7 @@ async function decorateProducts(
       inStock,
       rating: review ? Number(Number(review.avg).toFixed(1)) : null,
       reviewCount: review?.count ?? 0,
+      quickAddVariantId: own.length === 1 && own[0].stock > 0 ? own[0].id : null,
     };
   });
 }
@@ -351,7 +356,7 @@ export async function getProductBySlug(slug: string) {
   const product = rows[0];
   if (!product) return null;
 
-  const [images, variants, productCats, reviewRows] = await Promise.all([
+  const [images, variants, productCats, reviewRows, brandRows] = await Promise.all([
     db
       .select()
       .from(productImages)
@@ -379,6 +384,9 @@ export async function getProductBySlug(slug: string) {
       .from(reviews)
       .where(and(eq(reviews.productId, product.id), eq(reviews.isApproved, true)))
       .orderBy(desc(reviews.createdAt)),
+    product.brandId
+      ? db.select({ name: brands.name }).from(brands).where(eq(brands.id, product.brandId)).limit(1)
+      : Promise.resolve([] as { name: string }[]),
   ]);
 
   const averageRating =
@@ -393,6 +401,7 @@ export async function getProductBySlug(slug: string) {
     categories: productCats,
     reviews: reviewRows,
     averageRating,
+    brandName: brandRows[0]?.name ?? null,
   };
 }
 

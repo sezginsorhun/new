@@ -67,7 +67,7 @@ export default async function SearchPage(props: PageProps<"/arama">) {
                   <span className="text-[12px] text-[color:var(--color-muted)]">{total} ürün</span>
                   <SortSelect />
                 </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-9 sm:grid-cols-3 lg:gap-x-5 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3.5 lg:gap-4 xl:grid-cols-4">
                   {items.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

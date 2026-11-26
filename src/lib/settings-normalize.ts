@@ -35,6 +35,13 @@ const LEGACY_VALUES: Record<string, string[]> = {
   footer_col3_links: [
     "Hakkımızda|/sayfa/hakkimizda\nİletişim|/iletisim\nGizlilik politikası|/sayfa/gizlilik\nMesafeli satış sözleşmesi|/sayfa/mesafeli-satis",
   ],
+  // Eski temanın varsayılanları kaydedilmişse yeni tema uygulansın
+  theme_brand: ["#c62a4e"],
+  theme_brand_dark: ["#a41f3e"],
+  theme_brand_soft: ["#fdeef1"],
+  theme_radius: ["2"],
+  theme_surface_2: ["#f6f4f3"],
+  theme_line: ["#e7e3e0"],
   seo_home_title: ["Alenora — Yetişkin Ürünleri ve İç Giyim"],
   seo_home_description: [
     "Cinsel sağlık ürünleri, çift ürünleri ve iç giyim. Gizli ve isimsiz paketle gönderim, 750 TL üzeri ücretsiz kargo.",

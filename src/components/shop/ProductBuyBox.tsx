@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Heart, Lock, Minus, Package, Plus, RotateCcw, Ruler, ShieldCheck, ShoppingBag, Truck } from "lucide-react";
 import type { ProductVariant } from "@/db/schema";
-import { discountPercent, formatPrice } from "@/lib/money";
+import { formatPrice } from "@/lib/money";
 import { addToCartAction } from "@/actions/cart";
 import { toggleFavoriteAction } from "@/actions/account";
+import Price from "./Price";
 import ProductGallery, { type GalleryImage } from "./ProductGallery";
 import SizeGuideDialog from "./SizeGuideDialog";
 import WhatsAppIcon from "./WhatsAppIcon";
@@ -15,6 +16,9 @@ import WhatsAppIcon from "./WhatsAppIcon";
 export default function ProductBuyBox({
   productId,
   productName,
+  sku,
+  brandName,
+  rating,
   price,
   compareAtPrice,
   images,
@@ -25,6 +29,9 @@ export default function ProductBuyBox({
 }: {
   productId: string;
   productName: string;
+  sku: string;
+  brandName?: string | null;
+  rating?: { value: number; count: number } | null;
   price: number;
   compareAtPrice: number | null;
   images: GalleryImage[];
@@ -94,16 +101,19 @@ export default function ProductBuyBox({
 
   const selectedVariant = sizesForColor.find((v) => v.size === effectiveSize) ?? null;
   const activePrice = selectedVariant?.priceOverride ?? price;
-  const discount = discountPercent(activePrice, compareAtPrice);
   const maxQuantity = selectedVariant ? Math.min(selectedVariant.stock, 10) : 10;
 
-  function handleAdd() {
+  function handleAdd(buyNow = false) {
     if (!selectedVariant) {
       setFeedback({ ok: false, text: `Lütfen bir ${sizeLabel.toLocaleLowerCase("tr")} seç.` });
       return;
     }
     startTransition(async () => {
       const result = await addToCartAction(selectedVariant.id, quantity);
+      if (result.ok && buyNow) {
+        router.push("/sepet");
+        return;
+      }
       setFeedback({ ok: result.ok, text: result.message ?? "" });
       if (result.ok) router.refresh();
     });
@@ -113,7 +123,7 @@ export default function ProductBuyBox({
     startTransition(async () => {
       const result = await toggleFavoriteAction(productId);
       if (result.requiresLogin) {
-        router.push("/giris?next=/urun");
+        router.push(`/giris?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
       setFavorite(result.isFavorite);
@@ -125,21 +135,32 @@ export default function ProductBuyBox({
       <ProductGallery images={images} activeColor={color} productName={productName} />
 
       <div className="lg:pt-2">
-        {/* Fiyat */}
-        <div className="flex items-baseline gap-3">
-          <span className="text-[26px] font-semibold tracking-tight">
-            {formatPrice(activePrice)}
+        {/* Başlık */}
+        {brandName && (
+          <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[color:var(--color-brand)]">
+            {brandName}
+          </p>
+        )}
+        <h1 className="text-[22px] font-semibold leading-snug tracking-[-0.01em] sm:text-[26px]">
+          {productName}
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-[color:var(--color-muted)]">
+          <span>
+            Ürün kodu: <span className="font-medium text-[color:var(--color-ink-soft)]">{sku}</span>
           </span>
-          {compareAtPrice && compareAtPrice > activePrice && (
-            <>
-              <span className="text-[15px] text-[color:var(--color-muted)] line-through">
-                {formatPrice(compareAtPrice)}
-              </span>
-              <span className="badge bg-[color:var(--color-sale)] text-white">%{discount}</span>
-            </>
+          {rating && (
+            <a href="#yorumlar" className="flex items-center gap-1 hover:underline">
+              <span aria-hidden className="text-[#f5a623]">★</span>
+              {rating.value} ({rating.count} değerlendirme)
+            </a>
           )}
         </div>
-        <p className="mt-1 text-[12px] text-[color:var(--color-muted)]">KDV dahil fiyat</p>
+
+        {/* Fiyat */}
+        <div className="mt-5 rounded-[var(--radius-card)] bg-[color:var(--color-surface-2)] px-4 py-4">
+          <Price price={activePrice} compareAtPrice={compareAtPrice} size="lg" showBadge />
+          <p className="mt-2 text-[12px] text-[color:var(--color-muted)]">KDV dahil fiyat</p>
+        </div>
 
         {/* Renk */}
         {showColors && (
@@ -272,11 +293,11 @@ export default function ProductBuyBox({
 
           <button
             type="button"
-            onClick={handleAdd}
+            onClick={() => handleAdd(false)}
             disabled={pending}
-            className="btn-primary flex-1"
+            className="flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-card)] bg-[color:var(--color-sale)] px-4 text-[13.5px] font-bold uppercase tracking-[0.03em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            <ShoppingBag size={16} strokeWidth={1.5} />
+            <ShoppingBag size={17} strokeWidth={1.8} />
             {pending ? "Ekleniyor..." : "Sepete Ekle"}
           </button>
 
@@ -295,6 +316,15 @@ export default function ProductBuyBox({
             />
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => handleAdd(true)}
+          disabled={pending}
+          className="mt-3 flex h-[50px] w-full items-center justify-center rounded-[var(--radius-card)] bg-[color:var(--color-brand)] text-[13.5px] font-bold uppercase tracking-[0.03em] text-white transition-colors hover:bg-[color:var(--color-brand-dark)] disabled:opacity-50"
+        >
+          Hemen Al
+        </button>
 
         {whatsapp && (
           <a
@@ -333,32 +363,31 @@ export default function ProductBuyBox({
         )}
 
         {/* Güvenceler */}
-        <ul className="mt-6 grid gap-2 text-[12.5px] text-[color:var(--color-ink-soft)] sm:grid-cols-2">
-          <li className="flex items-center gap-2">
-            <Package size={15} strokeWidth={1.5} className="shrink-0" /> Düz kolide, isimsiz gönderim
-          </li>
-          <li className="flex items-center gap-2">
-            <ShieldCheck size={15} strokeWidth={1.5} className="shrink-0" /> Orijinal, faturalı ürün
-          </li>
-          <li className="flex items-center gap-2">
-            <RotateCcw size={15} strokeWidth={1.5} className="shrink-0" />
-            <Link href="/sayfa/iade-degisim" className="underline-offset-2 hover:underline">
-              Açılmamış üründe 14 gün iade
-            </Link>
-          </li>
-          <li className="flex items-center gap-2">
-            <Lock size={15} strokeWidth={1.5} className="shrink-0" /> Kart bilgisi saklanmaz
-          </li>
+        <ul className="mt-6 grid grid-cols-2 gap-2.5">
+          {[
+            { icon: Truck, title: `${formatPrice(freeShippingThreshold)} üzeri ücretsiz kargo`, text: "Hafta içi 15:00'e kadar genellikle aynı gün kargoda" },
+            { icon: Package, title: "Gizli paketleme", text: "Düz koli, ürün adı yazmayan fiş" },
+            { icon: ShieldCheck, title: "Orijinal ürün", text: "Faturalı, ithalatçı firmadan" },
+            { icon: Lock, title: "Güvenli alışveriş", text: "Kart bilgisi saklanmaz" },
+          ].map(({ icon: Icon, title, text }) => (
+            <li
+              key={title}
+              className="flex items-start gap-2.5 rounded-[var(--radius-card)] border border-[color:var(--color-line)] bg-white p-3"
+            >
+              <Icon size={20} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-brand)]" />
+              <span>
+                <span className="block text-[12.5px] font-semibold leading-tight">{title}</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-[color:var(--color-muted)]">{text}</span>
+              </span>
+            </li>
+          ))}
         </ul>
+        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[color:var(--color-ink-soft)]">
+          <RotateCcw size={14} strokeWidth={1.6} />
+          Ambalajı açılmamış ürünlerde 14 gün iade.{" "}
+          <Link href="/sayfa/iade-degisim" className="underline">Koşullar</Link>
+        </p>
 
-        {/* Kargo bilgisi */}
-        <div className="mt-6 flex items-start gap-2.5 border border-[color:var(--color-line)] bg-white p-3.5 text-[12.5px] text-[color:var(--color-ink-soft)]">
-          <Truck size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[color:var(--color-brand)]" />
-          <span>
-            {formatPrice(freeShippingThreshold)} ve üzeri siparişlerde <strong>kargo ücretsiz</strong>.
-            Hafta içi 15:00&apos;e kadar verilen siparişler genellikle aynı gün kargoya verilir.
-          </span>
-        </div>
       </div>
 
       <SizeGuideDialog open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />

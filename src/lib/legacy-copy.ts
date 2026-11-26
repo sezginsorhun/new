@@ -159,6 +159,12 @@ export function refreshSection<T extends SectionLike>(section: T, opts: { cardPa
     });
   }
 
+  // Kodla çizilmiş demo görseli olan bant görselsiz gösterilir (marka gradyanı).
+  if (section.type === "promo") {
+    if (isPlaceholderImage(config.imageUrl as string | undefined)) delete config.imageUrl;
+    if (config.mobileImageUrl && isPlaceholderImage(config.mobileImageUrl as string)) delete config.mobileImageUrl;
+  }
+
   if (section.type === "promo" && title && PROMO_COPY[title.trim()]) {
     const copy = PROMO_COPY[title.trim()];
     title = copy.title;

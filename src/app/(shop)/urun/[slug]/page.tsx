@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { and, eq } from "drizzle-orm";
-import { Star } from "lucide-react";
 import { db } from "@/db";
 import { favorites } from "@/db/schema";
 import { getProductBySlug, getRelatedProducts, incrementProductView } from "@/lib/catalog";
@@ -113,22 +112,12 @@ export default async function ProductPage(props: PageProps<"/urun/[slug]">) {
         <span className="text-[color:var(--color-ink)]">{product.name}</span>
       </nav>
 
-      <div className="mb-5">
-        <h1 className="text-[28px] leading-tight sm:text-[32px]">{product.name}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-4 text-[12.5px] text-[color:var(--color-muted)]">
-          <span>Ürün kodu: {product.sku}</span>
-          {product.averageRating && (
-            <span className="flex items-center gap-1">
-              <Star size={13} className="fill-[color:var(--color-brand)] text-[color:var(--color-brand)]" />
-              {product.averageRating} ({product.reviews.length} değerlendirme)
-            </span>
-          )}
-        </div>
-      </div>
-
       <ProductBuyBox
         productId={product.id}
         productName={product.name}
+        sku={product.sku}
+        brandName={product.brandName}
+        rating={product.averageRating ? { value: product.averageRating, count: product.reviews.length } : null}
         price={product.price}
         compareAtPrice={product.compareAtPrice}
         images={product.images.map((image) => ({
@@ -173,7 +162,7 @@ export default async function ProductPage(props: PageProps<"/urun/[slug]">) {
           <h2 className="mb-6 border-b border-[color:var(--color-line)] pb-3 text-[22px]">
             Benzer ürünler
           </h2>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
             {related.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}

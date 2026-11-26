@@ -76,9 +76,9 @@ function SectionHead({
       {ctaLabel && ctaHref && (
         <Link
           href={ctaHref}
-          className="shrink-0 border-b border-[color:var(--color-ink)] pb-0.5 text-[12.5px] font-semibold"
+          className="shrink-0 text-[13px] font-semibold text-[color:var(--color-brand)] hover:underline"
         >
-          {ctaLabel}
+          {ctaLabel} →
         </Link>
       )}
     </div>
@@ -175,8 +175,31 @@ async function CategoriesSection({ section }: { section: HomeSection }) {
           ctaLabel={config.ctaLabel}
           ctaHref={config.ctaHref}
         />
-        <div className={`grid ${isCard ? "gap-4 sm:gap-5" : "gap-2.5"} ${gridClass}`}>
-          {list.map((category) => (
+        <div className={`grid ${isCard ? "gap-4 sm:gap-5" : "gap-2.5 sm:gap-3.5"} ${gridClass}`}>
+          {list.map((category) =>
+            !isCard ? (
+              /* Kutu: beyaz zeminde ürün fotoğrafı (kırpılmadan), altında ad */
+              <Link
+                key={category.id}
+                href={`/kategori/${category.slug}`}
+                className="group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-[color:var(--color-line)] bg-white transition-shadow hover:border-[color:var(--color-line-strong)] hover:shadow-[0_6px_24px_rgba(40,20,70,0.08)]"
+              >
+                <div className="relative aspect-square">
+                  {category.imageUrl && (
+                    <Image
+                      src={category.imageUrl}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 17vw"
+                      className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                    />
+                  )}
+                </div>
+                <span className="px-2 pb-4 pt-1 text-center text-[13px] font-semibold text-[color:var(--color-ink)] group-hover:text-[color:var(--color-brand)]">
+                  {category.name}
+                </span>
+              </Link>
+            ) : (
             <Link key={category.id} href={`/kategori/${category.slug}`} className="group block">
               <div
                 className="relative overflow-hidden bg-[color:var(--color-surface-3)]"
@@ -216,7 +239,8 @@ async function CategoriesSection({ section }: { section: HomeSection }) {
                 </div>
               )}
             </Link>
-          ))}
+            ),
+          )}
         </div>
       </div>
     </section>
@@ -265,7 +289,7 @@ async function ProductsSection({ section }: { section: HomeSection }) {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-x-2.5 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -317,8 +341,15 @@ function PromoSection({ section }: { section: HomeSection }) {
   }
 
   return (
-    <section className="relative overflow-hidden bg-[color:var(--color-surface-3)]">
-      <div className="relative h-[280px] sm:h-[360px] lg:h-[420px]">
+    <section
+      className="relative overflow-hidden bg-[color:var(--color-surface-3)]"
+      style={
+        config.imageUrl
+          ? undefined
+          : { background: "linear-gradient(110deg, var(--color-brand) 0%, #7a2c8c 55%, var(--color-sale) 100%)" }
+      }
+    >
+      <div className={`relative ${config.imageUrl ? "h-[280px] sm:h-[360px] lg:h-[420px]" : "h-[240px] sm:h-[280px]"}`}>
         {config.imageUrl && (
           <>
             <Image
